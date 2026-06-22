@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa1c32e2e8100de4c9fdd2c957492c03, type: 3}
+  m_Name: StatusCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - statusId: 1
+    effectEntries:
+    - effectId: 0
+      parameters:
+      - key: CoolDownRemaining
+        value: 1
+      - key: RemainingTurns
+        value: 2
+    reapplyPolicy: 0
+  - statusId: 2
+    effectEntries:
+    - effectId: 1
+      parameters:
+      - key: CoolDownRemaining
+        value: 1
+      - key: RemainingTurns
+        value: 2
+    reapplyPolicy: 2
+  - statusId: 3
+    effectEntries:
+    - effectId: 2
+      parameters:
+      - key: CoolDownRemaining
+        value: 1
+      - key: RemainingTurns
+        value: 2
+    reapplyPolicy: 1
+  - statusId: 4
+    effectEntries:
+    - effectId: 3
+      parameters:
+      - key: CoolDownRemaining
+        value: 1
+      - key: RemainingTurns
+        value: 2
+    reapplyPolicy: 1
+  - statusId: 5
+    effectEntries:
+    - effectId: 4
+      parameters:
+      - key: CoolDownRemaining
+        value: 1
+      - key: RemainingTurns
+        value: 2
+    reapplyPolicy: 1
+  - statusId: 6
+    effectEntries:
+    - effectId: 5
+      parameters:
+      - key: CoolDownRemaining
+        value: 5
+      - key: RemainingTurns
+        value: 100
+    reapplyPolicy: 0
+  - statusId: 7
+    effectEntries:
+    - effectId: 6
+      parameters:
+      - key: CoolDownRemaining
+        value: 3
+      - key: RemainingTurns
+        value: 12
+    reapplyPolicy: 2

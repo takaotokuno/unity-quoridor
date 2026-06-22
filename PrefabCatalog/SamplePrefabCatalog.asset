@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c157341a2a6897b42a10ada86394b871, type: 3}
+  m_Name: SamplePrefabCatalog
+  m_EditorClassIdentifier: 
+  <ResignButtonPrefab>k__BackingField: {fileID: 1441473891026167748, guid: ea6de9682b0596f40b089ac14470c435,
+    type: 3}
+  <SkipButtonPrefab>k__BackingField: {fileID: 8205201023456755072, guid: 0fe9fab93bf2d4f499359fa821acd9b9,
+    type: 3}
+  <TilePrefab>k__BackingField: {fileID: 881502472433769257, guid: b3b82cf345c3fd641ace36f0af89a97c,
+    type: 3}
+  <WallPrefabVertical>k__BackingField: {fileID: 8734032583104667778, guid: 209ea52cb6ad4df4fa6c674f08fe5c64,
+    type: 3}
+  <WallPrefabHorizontal>k__BackingField: {fileID: 8734032583104667778, guid: ed8fb335ed464024db443eb1c6de6b17,
+    type: 3}
+  <WallPrefabJoint>k__BackingField: {fileID: -8461995387511072117, guid: 786b36df56c0bb042bc33af585efcd3c,
+    type: 3}
+  <PawnPrefabFirst>k__BackingField: {fileID: 2331216176203518107, guid: d0b07a3ce1320cf4dbae79a724b6885d,
+    type: 3}
+  <PawnPrefabSecond>k__BackingField: {fileID: 2331216176203518107, guid: 1dadcad09035ea74c81adac1f604b09f,
+    type: 3}
+  <TurnPanelPrefab>k__BackingField: {fileID: 4681790281709258800, guid: 632a553c7427fa949a02e3002b40cc76,
+    type: 3}
+  <SkillButtonPrefab>k__BackingField: {fileID: 3475577715061402785, guid: dcd0d7c287f001c46983f4339192e459,
+    type: 3}
+  <StatusPrefab>k__BackingField: {fileID: 2673220474908811286, guid: 07242c0c8d1c4a34b85ab46b6310e028,
+    type: 3}
+  <StatusPanelPrefab>k__BackingField: {fileID: 8615460747136304795, guid: 229a61bdb0d8dc44e919176a1fdff5a1,
+    type: 3}
