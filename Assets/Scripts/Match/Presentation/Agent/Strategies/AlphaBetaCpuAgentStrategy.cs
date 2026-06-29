@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using UnityEngine;
 
 namespace Quoridor
 {
@@ -17,11 +18,13 @@ namespace Quoridor
         private const int MaxSearchDepthSafetyLimit = 64;
         private const int MinScoreSentinel = int.MinValue + 1;
         private const int MaxScoreSentinel = int.MaxValue;
+        private readonly SearchProfiler _searchProfiler;
 
         public AlphaBetaCpuAgentStrategy(
             LegalCommandEnumerator legalCommandEnumerator,
             CpuCommandSimulator commandSimulator,
-            IRandomProvider randomProvider
+            IRandomProvider randomProvider,
+            SearchProfiler searchProfiler
         )
             : base(
                 legalCommandEnumerator,
@@ -29,6 +32,7 @@ namespace Quoridor
                 randomProvider
             )
         {
+            _searchProfiler = Guard.ThrowIfNull(searchProfiler, nameof(searchProfiler));
         }
 
         public override IEnumerator DecideCommand(
@@ -50,11 +54,19 @@ namespace Quoridor
             TimeSpan timeLimit = TimeSpan.FromMilliseconds(context.SearchTimeLimit.Value);
             TimeSpan frameBudget = TimeSpan.FromMilliseconds(FrameSearchBudgetMilliseconds);
             IMatchCommand bestCommand = PickRandomCommand(rootCandidates);
+            int completedDepth = 0;
+            int bestScore = 0;
+            bool timeout = false;
+
+            _searchProfiler.Begin();
 
             for (int depth = 1; depth <= MaxSearchDepthSafetyLimit; depth++)
             {
                 if (IsTimeExpired(totalStopwatch, timeLimit))
+                {
+                    timeout = true;
                     break;
+                }
 
                 SearchIterationResult result = SearchIterationResult.Timeout();
                 yield return SearchRoot(
@@ -69,13 +81,21 @@ namespace Quoridor
                 );
 
                 if (!result.Completed)
+                {
+                    timeout = true;
                     break;
+                }
 
                 bestCommand = result.Command;
+                bestScore = result.Score;
+                completedDepth = depth;
 
                 if (IsWinningScore(result.Score))
                     break;
             }
+
+            SearchProfilerSnapshot snapshot = _searchProfiler.End();
+            Debug.Log($"[CPU Search] depth={completedDepth}, {snapshot}, bestScore={bestScore}, timeout={timeout}");
 
             onDecided?.Invoke(bestCommand);
         }
@@ -97,6 +117,7 @@ namespace Quoridor
 
             foreach (IMatchCommand candidate in candidates)
             {
+                _searchProfiler.RecordNode(0);
                 if (IsTimeExpired(totalStopwatch, timeLimit))
                 {
                     onCompleted?.Invoke(SearchIterationResult.Timeout());
@@ -123,7 +144,8 @@ namespace Quoridor
                     totalStopwatch,
                     timeLimit,
                     frameStopwatch,
-                    frameBudget
+                    frameBudget,
+                    1
                 );
 
                 if (IsTimeExpired(totalStopwatch, timeLimit))
@@ -152,11 +174,14 @@ namespace Quoridor
             Stopwatch totalStopwatch,
             TimeSpan timeLimit,
             Stopwatch frameStopwatch,
-            TimeSpan frameBudget
+            TimeSpan frameBudget,
+            int currentDepth
         )
         {
+            _searchProfiler.RecordNode(currentDepth);
+
             if (ShouldEvaluateCurrentState(state, depthRemaining, totalStopwatch, timeLimit, frameStopwatch, frameBudget))
-                return Evaluate(context, state, perspectivePlayerId);
+                return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
             var candidates = EnumerateAllLegalCommands(CreateDecisionContext(
                 state,
@@ -164,7 +189,7 @@ namespace Quoridor
                 context.Evaluator
             ));
             if (candidates.Count == 0)
-                return Evaluate(context, state, perspectivePlayerId);
+                return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
             return IsMaximizingTurn(state, perspectivePlayerId)
                 ? SearchMaximizingNode(
@@ -178,7 +203,8 @@ namespace Quoridor
                     totalStopwatch,
                     timeLimit,
                     frameStopwatch,
-                    frameBudget
+                    frameBudget,
+                    currentDepth
                 )
                 : SearchMinimizingNode(
                     context,
@@ -191,7 +217,8 @@ namespace Quoridor
                     totalStopwatch,
                     timeLimit,
                     frameStopwatch,
-                    frameBudget
+                    frameBudget,
+                    currentDepth
                 );
         }
 
@@ -206,7 +233,8 @@ namespace Quoridor
             Stopwatch totalStopwatch,
             TimeSpan timeLimit,
             Stopwatch frameStopwatch,
-            TimeSpan frameBudget
+            TimeSpan frameBudget,
+            int currentDepth
         )
         {
             int value = MinScoreSentinel;
@@ -217,7 +245,7 @@ namespace Quoridor
                     return value;
 
                 if (IsFrameBudgetExpired(frameStopwatch, frameBudget))
-                    return Evaluate(context, state, perspectivePlayerId);
+                    return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
                 if (!TrySearchChild(
                     context,
@@ -231,6 +259,7 @@ namespace Quoridor
                     timeLimit,
                     frameStopwatch,
                     frameBudget,
+                    currentDepth,
                     out int score
                 ))
                     continue;
@@ -243,7 +272,7 @@ namespace Quoridor
             }
 
             return value == MinScoreSentinel
-                ? Evaluate(context, state, perspectivePlayerId)
+                ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth)
                 : value;
         }
 
@@ -258,7 +287,8 @@ namespace Quoridor
             Stopwatch totalStopwatch,
             TimeSpan timeLimit,
             Stopwatch frameStopwatch,
-            TimeSpan frameBudget
+            TimeSpan frameBudget,
+            int currentDepth
         )
         {
             int value = MaxScoreSentinel;
@@ -269,7 +299,7 @@ namespace Quoridor
                     return value;
 
                 if (IsFrameBudgetExpired(frameStopwatch, frameBudget))
-                    return Evaluate(context, state, perspectivePlayerId);
+                    return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
                 if (!TrySearchChild(
                     context,
@@ -283,6 +313,7 @@ namespace Quoridor
                     timeLimit,
                     frameStopwatch,
                     frameBudget,
+                    currentDepth,
                     out int score
                 ))
                     continue;
@@ -295,7 +326,7 @@ namespace Quoridor
             }
 
             return value == MaxScoreSentinel
-                ? Evaluate(context, state, perspectivePlayerId)
+                ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth)
                 : value;
         }
 
@@ -311,6 +342,7 @@ namespace Quoridor
             TimeSpan timeLimit,
             Stopwatch frameStopwatch,
             TimeSpan frameBudget,
+            int currentDepth,
             out int score
         )
         {
@@ -331,9 +363,22 @@ namespace Quoridor
                 totalStopwatch,
                 timeLimit,
                 frameStopwatch,
-                frameBudget
+                frameBudget,
+                currentDepth + 1
             );
             return true;
+        }
+
+
+        private int EvaluateProfiled(
+            CpuAgentDecisionContext context,
+            MatchState state,
+            PlayerId perspectivePlayerId,
+            int currentDepth
+        )
+        {
+            _searchProfiler.RecordNode(currentDepth);
+            return Evaluate(context, state, perspectivePlayerId);
         }
 
         private static CpuAgentDecisionContext CreateDecisionContext(
