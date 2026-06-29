@@ -56,5 +56,10 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "unity-quoridor.sln"
+    "dotnet.defaultSolution": "unity-quoridor.sln",
+    "cSpell.words": [
+        "Dont",
+        "Quoridor",
+        "Tweening"
+    ]
 }

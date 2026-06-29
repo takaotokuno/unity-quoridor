@@ -2,8 +2,7 @@
     "name": "Quoridor",
     "references": [
         "VContainer",
-        "Unity.TextMeshPro",
-        "Utage"
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
