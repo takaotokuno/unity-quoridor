@@ -12,12 +12,15 @@ namespace Quoridor.Tests
 
             profiler.Begin();
             profiler.RecordNode();
+            profiler.RecordNode(2);
             profiler.RecordNodes(2);
+            profiler.RecordNodes(3, 4);
             profiler.RecordBfsSearch();
             profiler.RecordBfsSearches(3);
             var snapshot = profiler.End();
 
-            Assert.That(snapshot.NodeCount, Is.EqualTo(3));
+            Assert.That(snapshot.NodeCount, Is.EqualTo(8));
+            Assert.That(snapshot.NodeCountsByDepth, Is.EqualTo("2:1,3:4"));
             Assert.That(snapshot.BfsCount, Is.EqualTo(4));
             Assert.That(snapshot.GcAllocatedBytes, Is.GreaterThanOrEqualTo(0));
             Assert.That(snapshot.Elapsed.TotalMilliseconds, Is.GreaterThanOrEqualTo(0));

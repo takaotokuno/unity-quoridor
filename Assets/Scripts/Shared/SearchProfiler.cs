@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 
 namespace Quoridor
 {
@@ -11,11 +13,13 @@ namespace Quoridor
     {
         private static readonly Func<long> AllocatedBytesProvider = CreateAllocatedBytesProvider();
 
+        private readonly SortedDictionary<int, long> _nodeCountsByDepth = new();
         private readonly Stopwatch _stopwatch = new();
         private long _startAllocatedBytes;
 
         public long NodeCount { get; private set; }
         public long BfsCount { get; private set; }
+        public string NodeCountsByDepth => FormatNodeCountsByDepth();
         public bool IsRunning { get; private set; }
 
         /// <summary>
@@ -63,6 +67,14 @@ namespace Quoridor
         }
 
         /// <summary>
+        /// 指定した探索深さでノードを 1 つ訪問したことを記録する。
+        /// </summary>
+        public void RecordNode(int depth)
+        {
+            RecordNodes(depth, 1);
+        }
+
+        /// <summary>
         /// 探索ノードを複数まとめて訪問したことを記録する。
         /// </summary>
         public void RecordNodes(long count)
@@ -73,6 +85,26 @@ namespace Quoridor
             }
 
             NodeCount += count;
+        }
+
+        /// <summary>
+        /// 指定した探索深さでノードを複数まとめて訪問したことを記録する。
+        /// </summary>
+        public void RecordNodes(int depth, long count)
+        {
+            if (count <= 0)
+            {
+                return;
+            }
+
+            RecordNodes(count);
+
+            if (!_nodeCountsByDepth.ContainsKey(depth))
+            {
+                _nodeCountsByDepth[depth] = 0;
+            }
+
+            _nodeCountsByDepth[depth] += count;
         }
 
         /// <summary>
@@ -108,6 +140,7 @@ namespace Quoridor
         {
             NodeCount = 0;
             BfsCount = 0;
+            _nodeCountsByDepth.Clear();
         }
 
         private SearchProfilerSnapshot CreateSnapshot()
@@ -121,9 +154,33 @@ namespace Quoridor
             return new SearchProfilerSnapshot(
                 NodeCount,
                 BfsCount,
+                NodeCountsByDepth,
                 allocatedBytes,
                 _stopwatch.Elapsed
             );
+        }
+
+        private string FormatNodeCountsByDepth()
+        {
+            if (_nodeCountsByDepth.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder();
+            foreach (var pair in _nodeCountsByDepth)
+            {
+                if (builder.Length > 0)
+                {
+                    builder.Append(",");
+                }
+
+                builder.Append(pair.Key);
+                builder.Append(':');
+                builder.Append(pair.Value);
+            }
+
+            return builder.ToString();
         }
 
         private static long GetAllocatedBytesForCurrentThread()
@@ -154,25 +211,28 @@ namespace Quoridor
     {
         public long NodeCount { get; }
         public long BfsCount { get; }
+        public string NodeCountsByDepth { get; }
         public long GcAllocatedBytes { get; }
         public TimeSpan Elapsed { get; }
 
         public SearchProfilerSnapshot(
             long nodeCount,
             long bfsCount,
+            string nodeCountsByDepth,
             long gcAllocatedBytes,
             TimeSpan elapsed
         )
         {
             NodeCount = nodeCount;
             BfsCount = bfsCount;
+            NodeCountsByDepth = nodeCountsByDepth ?? string.Empty;
             GcAllocatedBytes = gcAllocatedBytes;
             Elapsed = elapsed;
         }
 
         public override string ToString()
         {
-            return $"nodes={NodeCount}, bfs={BfsCount}, gcAlloc={GcAllocatedBytes}B, elapsed={Elapsed.TotalMilliseconds:0.###}ms";
+            return $"nodes={NodeCount}, nodesByDepth=[{NodeCountsByDepth}], bfs={BfsCount}, gcAlloc={GcAllocatedBytes}B, elapsedMs={Elapsed.TotalMilliseconds:0.###}";
         }
     }
 }
