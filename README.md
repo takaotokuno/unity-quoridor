@@ -1,7 +1,7 @@
 # Unity Quoridor
 
 Unityで制作しているQuoridor風のボードゲームです。
-Unity Editorでプロジェクトを開き、`Standalone.unity` シーンから動作確認できます。
+Unity Editorでプロジェクトを開き、`Assets/Scenes/Standalone.unity` シーンから動作確認できます。
 
 ## Overview
 
