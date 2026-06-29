@@ -5,17 +5,17 @@ namespace Quoridor
     public sealed class PlayerConfig
     {
         public bool IsCpu;
-        public CpuAgentStrategyKind CpuStrategyKind;
+        public CpuAgentOptions CpuOptions;
         public IReadOnlyList<SkillId> SkillIds;
 
         public PlayerConfig(
             bool isCpu,
             IReadOnlyList<SkillId> skillIds,
-            CpuAgentStrategyKind cpuStrategyKind = CpuAgentStrategyKind.RandomLegal
+            CpuAgentOptions cpuOptions = null
         )
         {
             IsCpu = isCpu;
-            CpuStrategyKind = cpuStrategyKind;
+            CpuOptions = cpuOptions ?? CpuAgentOptions.Default;
             SkillIds = skillIds;
         }
     }

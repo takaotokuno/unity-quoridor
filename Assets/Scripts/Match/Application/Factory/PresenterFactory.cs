@@ -4,7 +4,7 @@ namespace Quoridor
 {
     public sealed partial class PresenterFactory : IPresenterFactory
     {
-        private readonly MatchPresentationConfig _setting;
+        private readonly MatchObjectsConfig _setting;
         private MatchViewPrefabCatalog presenterSetting => _setting.ViewPrefabCatalog;
         private ObjectLayoutView layout => _setting.ObjectLayoutView;
         private readonly MatchInputPort _inputPort;
@@ -16,7 +16,7 @@ namespace Quoridor
         private readonly StatusViewCatalog _statusViewCatalog;
 
         public PresenterFactory(
-            MatchPresentationConfig setting,
+            MatchObjectsConfig setting,
             MatchInputPort inputPort, 
             IMatchEventBus eventBus,
             InteractionStateStore interactionStateStore,
@@ -63,15 +63,8 @@ namespace Quoridor
             resignButton.BindViewModel(buttonViewModels[0]);
             skipButton.BindViewModel(buttonViewModels[1]);
 
-            var buttonViews = new IUserInteractable[]
-            {
-                resignButton,
-                skipButton,
-            };
-
             MatchControlPresenter presenter = new(
                 controlView,
-                buttonViews,
                 buttonViewModels,
                 _interactionStateStore,
                 _inputStateStore
@@ -89,8 +82,11 @@ namespace Quoridor
             
             TurnPanelView turnPanel = _CreateView(presenterSetting.TurnPanelPrefab, localPos, canvas.transform);
             Object.Destroy(layout.TurnPanel.gameObject);
-            
-            TurnPanelPresenter presenter = new(turnPanel);
+
+            var viewModel = new TurnPanelViewModel();
+            turnPanel.BindViewModel(viewModel);
+
+            TurnPanelPresenter presenter = new(viewModel);
             presenter.SubscribeTo(_eventBus);
             return presenter;
         }
@@ -109,17 +105,55 @@ namespace Quoridor
             StatusPanelView panelSecond = _CreateView(presenterSetting.StatusPanelPrefab, localPosSecond, canvas.transform);
             Object.Destroy(layout.StatusPanelSecond.gameObject);
 
+            PlayerStatusPanelPresenter firstPlayer = CreatePlayerStatusPanelPresenter(
+                PlayerId.FirstPlayer,
+                panelFirst
+            );
+            PlayerStatusPanelPresenter secondPlayer = CreatePlayerStatusPanelPresenter(
+                PlayerId.SecondPlayer,
+                panelSecond
+            );
+
             StatusPanelPresenter presenter = new(
-                panelFirst,
-                panelSecond,
-                _statusViewCatalog, 
-                presenterSetting.StatusPrefab,
-                _interactionStateStore
+                firstPlayer,
+                secondPlayer
             );
 
             presenter.SubscribeTo(_eventBus);
 
             return presenter;
+        }
+
+        private PlayerStatusPanelPresenter CreatePlayerStatusPanelPresenter(
+            PlayerId playerId,
+            StatusPanelView panelView
+        )
+        {
+            StatusPanelViewModel panelViewModel = CreateAndBindStatusPanelViewModel(
+                panelView
+            );
+
+            IStatusIconContainer iconContainer = new StatusPanelIconContainer(
+                panelView,
+                presenterSetting.StatusPrefab,
+                _statusViewCatalog
+            );
+
+            return new PlayerStatusPanelPresenter(
+                playerId,
+                panelViewModel,
+                iconContainer,
+                _interactionStateStore
+            );
+        }
+
+        private static StatusPanelViewModel CreateAndBindStatusPanelViewModel(
+            StatusPanelView panelView
+        )
+        {
+            var viewModel = new StatusPanelViewModel();
+            panelView.BindViewModel(viewModel);
+            return viewModel;
         }
 
         private T _CreateView<T>(T prefab, Vector3 localPosition, Transform parent) where T : ViewBase

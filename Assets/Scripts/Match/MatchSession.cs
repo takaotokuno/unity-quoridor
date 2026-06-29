@@ -8,19 +8,19 @@ namespace Quoridor
         private bool _disposed;
         private IMatchCommandPort _commandPort;
         private IMatchEventBus _eventBus;
-        private IMatchPresentation _presentation;
+        private IMatchObjects _matchObjects;
 
         public MatchSession(
             int sessionId,
             IMatchCommandPort commandPort,
             IMatchEventBus eventBus,
-            IMatchPresentation presentation
+            IMatchObjects matchObjects
         )
         {
             SessionId = sessionId;
             _commandPort = commandPort;
             _eventBus = eventBus;
-            _presentation = presentation;
+            _matchObjects = matchObjects;
         }
 
         public IMatchResponse DispatchCommand(IMatchCommand command)
@@ -37,13 +37,13 @@ namespace Quoridor
         {
             _eventBus.Unsubscribe(observer);
         }
-        
+
         public void Dispose()
         {
             if (_disposed) return;
 
-            _presentation?.Dispose();
-            _presentation = null;           
+            _matchObjects?.Dispose();
+            _matchObjects = null;
             _eventBus = null;
             _commandPort = null;
 

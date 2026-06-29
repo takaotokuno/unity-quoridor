@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Quoridor
 {
     public sealed class TurnPanelPresenter 
@@ -8,12 +6,13 @@ namespace Quoridor
           IMatchObserver<TurnStartedEvent>,
           IEventSubscriber
     {
-        private readonly TurnPanelView _panel;
+        private readonly TurnPanelViewModel _viewModel;
         private IMatchEventBus _eventBus;
-        public TurnPanelPresenter(TurnPanelView panel)
+
+        public TurnPanelPresenter(TurnPanelViewModel viewModel)
             : base()
         {
-            _panel = panel;   
+            _viewModel = viewModel;
         }
 
         public void SubscribeTo(IMatchEventBus eventBus)
@@ -25,20 +24,21 @@ namespace Quoridor
 
         public override void Dispose()
         {
+            if (_eventBus == null) return;
+
             _eventBus.Unsubscribe<MatchReadiedEvent>(this);
             _eventBus.Unsubscribe<TurnStartedEvent>(this);
-
-            Object.Destroy(_panel);
+            _eventBus = null;
         }
 
         public void Notify(MatchReadiedEvent e)
         {
-            _panel.PlayShow();
+            _viewModel.IsVisible = true;
         }
 
         public void Notify(TurnStartedEvent e)
         {
-            _panel.UpdateTurnCount(e.CurrentTurn);
+            _viewModel.CurrentTurn = e.CurrentTurn;
         }
     }
 }

@@ -28,7 +28,7 @@ namespace Quoridor{
                 PlayerFirst = new PlayerSetting
                 {
                     IsCpu = matchPreset.PlayerControlMode == PlayerControlMode.Cpu,
-                    CpuStrategyKind = matchPreset.PlayerCpuStrategyKind,
+                    CpuOptions = ToCpuOptions(matchPreset.PlayerCpuAgentPreset),
                     SkillIds = matchPreset.PlayerSkillIds
                         .Select(SkillId.Of)
                         .ToList()
@@ -36,7 +36,7 @@ namespace Quoridor{
                 PlayerSecond = new PlayerSetting
                 {
                     IsCpu = matchPreset.EnemyControlMode == PlayerControlMode.Cpu,
-                    CpuStrategyKind = matchPreset.EnemyCpuStrategyKind,
+                    CpuOptions = ToCpuOptions(matchPreset.EnemyCpuAgentPreset),
                     SkillIds = matchPreset.EnemySkillIds
                         .Select(SkillId.Of)
                         .ToList()
@@ -44,6 +44,13 @@ namespace Quoridor{
                 ViewPrefabCatalog = matchPreset.ViewPrefabCatalog,
                 ObjectLayoutView = objectLayoutView
             };
+        }
+
+        private static CpuAgentOptions ToCpuOptions(CpuAgentPreset preset)
+        {
+            return preset == null
+                ? CpuAgentOptions.Default
+                : preset.ToOptions();
         }
 
         public void NewSession()

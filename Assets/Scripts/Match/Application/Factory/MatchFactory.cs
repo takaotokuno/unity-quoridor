@@ -5,8 +5,7 @@ namespace Quoridor
         private int _sessionId;
         private MatchStateFactory _stateFactory;
         private readonly MatchCommandPortFactory _commandPortFactory;
-        private readonly CpuAgentFactory _cpuAgentFactory;
-        private readonly MatchPresentationFactory _presentationFactory;
+        private readonly MatchObjectsFactory _matchObjectsFactory;
         private readonly ISoundService _sound;
         private readonly ITimeEffectService _timeEffect;
         private readonly IBackgroundEffectService _background;
@@ -15,8 +14,7 @@ namespace Quoridor
         public MatchFactory(
             MatchStateFactory stateFactory,
             MatchCommandPortFactory commandPortFactory,
-            CpuAgentFactory cpuAgentFactory,
-            MatchPresentationFactory presentationFactory,
+            MatchObjectsFactory matchObjectsFactory,
             ISoundService sound,
             ITimeEffectService timeEffect,
             IBackgroundEffectService background,
@@ -26,8 +24,7 @@ namespace Quoridor
             _sessionId = 1;
             _stateFactory = stateFactory;
             _commandPortFactory = commandPortFactory;
-            _cpuAgentFactory = cpuAgentFactory;
-            _presentationFactory = presentationFactory;
+            _matchObjectsFactory = matchObjectsFactory;
             _sound = sound;
             _timeEffect = timeEffect;
             _background = background;
@@ -37,11 +34,11 @@ namespace Quoridor
         public MatchSession Create(MatchSetting setting)
         {
             var stateConfig = MatchConfigMapper.ToStateConfig(setting);
-            var presentationConfig = MatchConfigMapper.ToPresentationConfig(setting);
+            var objectsConfig = MatchConfigMapper.ToObjectsConfig(setting);
 
             var state = _stateFactory.Create(stateConfig);
-            
-            var eventBus = new MatchEventBus(); 
+
+            var eventBus = new MatchEventBus();
             var interpreter = new MatchEventInterpreter(
                 _sound,
                 _timeEffect,
@@ -56,30 +53,23 @@ namespace Quoridor
             logObserver.SubscribeTo(eventBus);
 
             var commandPort = _commandPortFactory.Create(
-                state, 
+                state,
                 eventBus
             );
 
-            // PlayerConfig.IsCpu == true のプレイヤーに対して CPU エージェントを生成・初期化する
-            _cpuAgentFactory.Create(
+            var matchObjects = _matchObjectsFactory.Create(
+                objectsConfig,
                 stateConfig,
                 state,
-                commandPort,
-                eventBus
-            );
-            
-            var presentation = _presentationFactory.Create(
-                presentationConfig, 
-                state, 
-                eventBus, 
+                eventBus,
                 commandPort
             );
 
             var session = new MatchSession(
-                _sessionId, 
-                commandPort, 
-                eventBus, 
-                presentation
+                _sessionId,
+                commandPort,
+                eventBus,
+                matchObjects
             );
             _sessionId ++;
             eventBus.DispatchEvent(new MatchReadiedEvent());

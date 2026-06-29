@@ -1,33 +1,40 @@
+using System;
+using System.Collections;
+
 namespace Quoridor
 {
     /// <summary>
-    /// 列挙された合法手からランダムに 1 手を選ぶ Strategy。
+    /// すべての合法手からランダムに 1 手を選ぶ Strategy。
+    /// Match 固有の状態は持たず、DI で Singleton 登録して使い回せる。
     /// </summary>
     public sealed class RandomLegalCpuAgentStrategy : ICpuAgentStrategy
     {
         private readonly LegalCommandEnumerator _legalCommandEnumerator;
         private readonly IRandomProvider _randomProvider;
-        private readonly LegalCommandEnumerationOptions _options;
 
         public RandomLegalCpuAgentStrategy(
             LegalCommandEnumerator legalCommandEnumerator,
-            IRandomProvider randomProvider,
-            LegalCommandEnumerationOptions options
+            IRandomProvider randomProvider
         )
         {
             _legalCommandEnumerator = Guard.ThrowIfNull(legalCommandEnumerator, nameof(legalCommandEnumerator));
             _randomProvider = Guard.ThrowIfNull(randomProvider, nameof(randomProvider));
-            _options = options;
         }
 
-        public IMatchCommand DecideCommand(CpuAgentDecisionContext context)
+        public IEnumerator DecideCommand(
+            CpuAgentDecisionContext context,
+            Action<IMatchCommand> onDecided
+        )
         {
-            var candidates = _legalCommandEnumerator.Enumerate(context, _options);
+            var candidates = _legalCommandEnumerator.Enumerate(context, LegalCommandEnumerationOptions.All);
             if (candidates.Count == 0)
-                return null;
+            {
+                onDecided?.Invoke(null);
+                yield break;
+            }
 
             int index = _randomProvider.Range(0, candidates.Count);
-            return candidates[index];
+            onDecided?.Invoke(candidates[index]);
         }
     }
 }

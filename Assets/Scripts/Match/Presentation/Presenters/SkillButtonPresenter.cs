@@ -12,10 +12,8 @@ namespace Quoridor
         private IMatchEventBus _eventBus;
 
         public SkillButtonPresenter(
-            SkillButtonSetView setFirst,
-            SkillButtonView[] buttonViewsFirst,
-            SkillButtonSetView setSecond,
-            SkillButtonView[] buttonViewsSecond,
+            SkillButtonViewModel[] buttonModelsFirst,
+            SkillButtonViewModel[] buttonModelsSecond,
             InteractionStateStore interactionStateStore,
             InputStateStore inputStateStore,
             SkillSelectionStore skillSelectionStore
@@ -23,8 +21,7 @@ namespace Quoridor
         {
             _firstPlayer = new PlayerSkillButtonPresenter(
                 PlayerId.FirstPlayer,
-                setFirst,
-                buttonViewsFirst,
+                buttonModelsFirst,
                 interactionStateStore,
                 inputStateStore,
                 skillSelectionStore
@@ -32,8 +29,7 @@ namespace Quoridor
 
             _secondPlayer = new PlayerSkillButtonPresenter(
                 PlayerId.SecondPlayer,
-                setSecond,
-                buttonViewsSecond,
+                buttonModelsSecond,
                 interactionStateStore,
                 inputStateStore,
                 skillSelectionStore
@@ -50,14 +46,11 @@ namespace Quoridor
 
         public override void Dispose()
         {
-            if (_eventBus != null)
-            {
-                _eventBus.Unsubscribe<InteractionStateChangedEvent>(this);
-                _eventBus.Unsubscribe<InputReceivedEvent>(this);
-            }
+            if (_eventBus == null) return;
 
-            _firstPlayer.Dispose();
-            _secondPlayer.Dispose();
+            _eventBus.Unsubscribe<InteractionStateChangedEvent>(this);
+            _eventBus.Unsubscribe<InputReceivedEvent>(this);
+            _eventBus = null;
         }
 
         public void Notify(InteractionStateChangedEvent e)

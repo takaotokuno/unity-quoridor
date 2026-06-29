@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93d86b8c18034e17b463b5f8b622d016, type: 3}
+  m_Name: DefaultCpuAgentPreset
+  m_EditorClassIdentifier: 
+  id: default_cpu_agent
+  displayName: Default CPU Agent
+  strategyKind: 0
+  searchTimeLimitMilliseconds: 1000
+  evaluatorPreset: {fileID: 11400000, guid: d9a1a65c1cf04e4892ad5a5486e30103, type: 2}

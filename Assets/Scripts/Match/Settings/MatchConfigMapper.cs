@@ -17,12 +17,12 @@ namespace Quoridor
             };
         }
 
-        public static MatchPresentationConfig ToPresentationConfig(MatchSetting setting)
+        public static MatchObjectsConfig ToObjectsConfig(MatchSetting setting)
         {
             var clone = Object.Instantiate(setting.ObjectLayoutView);
             clone.CanvasView.Show();
 
-            return new MatchPresentationConfig
+            return new MatchObjectsConfig
             {
                 BoardSize = setting.BoardSize,
                 InitPawns = setting.InitPawns.ToArray(),
@@ -38,7 +38,7 @@ namespace Quoridor
             return new PlayerConfig(
                 setting.IsCpu,
                 setting.SkillIds.ToArray(),
-                setting.CpuStrategyKind
+                setting.CpuOptions
             );
         }
     }

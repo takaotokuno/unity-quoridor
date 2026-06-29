@@ -1,11 +1,8 @@
-using UnityEngine;
-
 namespace Quoridor
 {
     public sealed class PlayerSkillButtonPresenter
     {
         private readonly PlayerId _playerId;
-        private readonly SkillButtonSetView _set;
         private readonly SkillButtonViewModel[] _buttonModels;
 
         private readonly InteractionStateStore _interactionStateStore;
@@ -14,38 +11,20 @@ namespace Quoridor
 
         public PlayerSkillButtonPresenter(
             PlayerId playerId,
-            SkillButtonSetView set,
-            SkillButtonView[] buttonViews,
+            SkillButtonViewModel[] buttonModels,
             InteractionStateStore interactionStateStore,
             InputStateStore inputStateStore,
             SkillSelectionStore skillSelectionStore
         )
         {
             _playerId = playerId;
-            _set = set;
-            _buttonModels = CreateAndBindModels(buttonViews);
+            _buttonModels = buttonModels;
 
             _interactionStateStore = interactionStateStore;
             _inputStateStore = inputStateStore;
             _skillSelectionStore = skillSelectionStore;
 
             Refresh();
-        }
-
-        private static SkillButtonViewModel[] CreateAndBindModels(
-            SkillButtonView[] buttonViews
-        )
-        {
-            int length = buttonViews.Length;
-            var models = new SkillButtonViewModel[length];
-
-            for (int i = 0; i < length; i++)
-            {
-                models[i] = new SkillButtonViewModel();
-                buttonViews[i].BindViewModel(models[i]);
-            }
-
-            return models;
         }
 
         public void Refresh()
@@ -64,14 +43,6 @@ namespace Quoridor
                     skillSlotId,
                     interactionState
                 );
-            }
-        }
-
-        public void Dispose()
-        {
-            if (_set != null)
-            {
-                Object.Destroy(_set.gameObject);
             }
         }
 

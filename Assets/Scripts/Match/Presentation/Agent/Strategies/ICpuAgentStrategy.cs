@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+
 namespace Quoridor
 {
     /// <summary>
@@ -9,6 +12,9 @@ namespace Quoridor
         /// 現在ターンの状態から発行するコマンドを決定する。
         /// 行動できない場合は null を返す。
         /// </summary>
-        IMatchCommand DecideCommand(CpuAgentDecisionContext context);
+        IEnumerator DecideCommand(
+            CpuAgentDecisionContext context,
+            Action<IMatchCommand> onDecided
+        );
     }
 }

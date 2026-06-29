@@ -10,7 +10,7 @@ namespace Quoridor
             IReadOnlyList<SkillId> skillsFirst = _setting.SkillIdsFirst;
             SkillButtonSetView setFirst = layout.SkillButtonSetViewFirst;
 
-            SkillButtonView[] buttonsFirst = CreateSkillButtons(
+            SkillButtonViewModel[] buttonModelsFirst = CreateAndBindSkillButtonViewModels(
                 PlayerId.FirstPlayer,
                 skillsFirst,
                 setFirst.transform
@@ -19,17 +19,15 @@ namespace Quoridor
             IReadOnlyList<SkillId> skillsSecond = _setting.SkillIdsSecond;
             SkillButtonSetView setSecond = layout.SkillButtonSetViewSecond;
 
-            SkillButtonView[] buttonsSecond = CreateSkillButtons(
+            SkillButtonViewModel[] buttonModelsSecond = CreateAndBindSkillButtonViewModels(
                 PlayerId.SecondPlayer,
                 skillsSecond,
                 setSecond.transform
             );
 
             SkillButtonPresenter presenter = new(
-                setFirst,
-                buttonsFirst,
-                setSecond,
-                buttonsSecond,
+                buttonModelsFirst,
+                buttonModelsSecond,
                 _interactionStateStore,
                 _inputStateStore,
                 _skillSelectionStore
@@ -40,7 +38,7 @@ namespace Quoridor
             return presenter;
         }
 
-        private SkillButtonView[] CreateSkillButtons(
+        private SkillButtonViewModel[] CreateAndBindSkillButtonViewModels(
             PlayerId playerId,
             IReadOnlyList<SkillId> skills,
             Transform parent
@@ -60,7 +58,9 @@ namespace Quoridor
                 skills.Count
             );
 
-            SkillButtonView[] buttons = new SkillButtonView[buttonCount];
+            SkillButtonViewModel[] buttonModels = new SkillButtonViewModel[
+                buttonCount
+            ];
 
             for (int buttonIndex = 0;
                  buttonIndex < buttonCount;
@@ -78,10 +78,13 @@ namespace Quoridor
                 skillButton.Initialize(playerId, skillSlotId);
                 skillButton.BindInputPort(_inputPort);
                 skillButton.BindViewDefinition(viewEntry);
-                buttons[buttonIndex] = skillButton;
+
+                var buttonModel = new SkillButtonViewModel();
+                skillButton.BindViewModel(buttonModel);
+                buttonModels[buttonIndex] = buttonModel;
             }
 
-            return buttons;
+            return buttonModels;
         }
 
         private SkillButtonView CreateSkillButtonView(Transform parent)

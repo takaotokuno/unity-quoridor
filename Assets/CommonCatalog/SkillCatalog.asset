@@ -61,7 +61,7 @@ MonoBehaviour:
       value: 3
     - key: CoolDownTime
       value: 4
-  - skillId: 4
+  - skillId: add_sleep
     activationType: 0
     targetKind: 0
     consumeTurn: 0
@@ -69,7 +69,9 @@ MonoBehaviour:
     composerId: apply_status
     ruleId: none
     parameters:
-    - key: CoolDownTime
+    - key: RemainingTurns
+      value: 3
+    - key: CoolDownRemaining
       value: 3
     - key: TargetPlayer
       value: 2

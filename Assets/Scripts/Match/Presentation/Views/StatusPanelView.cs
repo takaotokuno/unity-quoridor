@@ -34,7 +34,7 @@ namespace Quoridor
             ApplyViewModelValue();
         }
 
-        public StatusIconView AddStatusIcon(StatusIconView prefab)
+        public StatusIconView AddStatusIcon(StatusIconView prefab, StatusViewEntry entry)
         {
             if (_iconRoot == null)
             {
@@ -47,7 +47,16 @@ namespace Quoridor
                 Debug.LogError($"{nameof(StatusPanelView)}: StatusView prefab is null.");
                 return null;
             }
-            return Object.Instantiate(prefab, _iconRoot.transform);
+
+            StatusIconView view = Object.Instantiate(prefab, _iconRoot.transform);
+
+            if (entry != null)
+            {
+                view.BindViewDefinition(entry);
+            }
+
+            view.PlayShow();
+            return view;
         }
 
         public void RemoveStatusIcon(StatusIconView view)

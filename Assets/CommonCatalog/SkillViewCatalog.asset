@@ -18,15 +18,15 @@ MonoBehaviour:
     description: 
     icon: {fileID: -2413806693520163455, guid: 11e1089b91af608408438ffce8ffb265, type: 3}
   - skillId: place_wall
-    displayName: Build
+    displayName: Build Wall
     description: 
     icon: {fileID: -2413806693520163455, guid: 11e1089b91af608408438ffce8ffb265, type: 3}
   - skillId: move_pawn_3spaces
-    displayName: Move3
+    displayName: Long Move
     description: 
     icon: {fileID: -2413806693520163455, guid: 11e1089b91af608408438ffce8ffb265, type: 3}
   - skillId: remove_wall
-    displayName: Destroy
+    displayName: Destroy Wall
     description: 
     icon: {fileID: -2413806693520163455, guid: 11e1089b91af608408438ffce8ffb265, type: 3}
   - skillId: add_sleep

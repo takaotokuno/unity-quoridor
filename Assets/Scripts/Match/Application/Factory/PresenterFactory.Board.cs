@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Quoridor
@@ -17,81 +18,99 @@ namespace Quoridor
             Transform root = boardView.transform;
 
             int boardSize = _setting.BoardSize;
-            TileView[,] tileViews = new TileView[boardSize, boardSize];
-            WallView[,] wallViews = new WallView[boardSize, boardSize];
-            WallJointView[,] wallJointViews = new WallJointView[boardSize, boardSize];
-
-            BoardCellViewModel[,] viewModels = new BoardCellViewModel[boardSize, boardSize];
+            BoardCellViewModel[,] cellViewModels = new BoardCellViewModel[boardSize, boardSize];
 
             for (int x = 0; x < boardSize; x++)
             {
                 for (int y = 0; y < boardSize; y++)
                 {
-                    var vm = new BoardCellViewModel();
-                    viewModels[y, x] = vm;
+                    BoardCellViewModel vm = new();
+                    cellViewModels[y, x] = vm;
 
                     if (x % 2 == 0 && y % 2 == 0)
                     {
                         Vector3 worldPos = layout.GetTilePosition(x, y);
                         Vector3 localPos = root.InverseTransformPoint(worldPos);
-                        var view = _CreateView(tilePrefab, localPos, root);
+                        TileView view = _CreateView(tilePrefab, localPos, root);
                         view.SetPosition(new Position(x, y));
                         view.BindInputPort(_inputPort);
                         view.BindViewModel(vm);
-                        tileViews[y, x] = view;
                     }
                     else if (x % 2 == 1 && y % 2 == 0)
                     {
                         Vector3 worldPos = layout.GetVerticalWallPosition(x, y);
                         Vector3 localPos = root.InverseTransformPoint(worldPos);
-                        var view = _CreateView(wallPrefabVertical, localPos, root);
+                        WallView view = _CreateView(wallPrefabVertical, localPos, root);
                         view.SetPosition(new Position(x, y));
                         view.BindInputPort(_inputPort);
                         view.BindViewModel(vm);
-                        wallViews[y, x] = view;
                     }
                     else if (x % 2 == 0 && y % 2 == 1)
                     {
                         Vector3 worldPos = layout.GetHorizontalWallPosition(x, y);
                         Vector3 localPos = root.InverseTransformPoint(worldPos);
-                        var view = _CreateView(wallPrefabHorizontal, localPos, root);
+                        WallView view = _CreateView(wallPrefabHorizontal, localPos, root);
                         view.SetPosition(new Position(x, y));
                         view.BindInputPort(_inputPort);
                         view.BindViewModel(vm);
-                        wallViews[y, x] = view;
                     }
                     else // x % 2 == 1 && y % 2 == 1
                     {
                         Vector3 worldPos = layout.GetHorizontalWallPosition(x, y);
                         Vector3 localPos = root.InverseTransformPoint(worldPos);
-                        var view = _CreateView(wallPrefabJoint, localPos, root);
+                        WallJointView view = _CreateView(wallPrefabJoint, localPos, root);
                         view.BindViewModel(vm);
-                        wallJointViews[y, x] = view;
                     }
                 }
             }
 
-            var initPawns = _setting.InitPawns;
-            var pawnViews = new PawnView[2];
-            var pawnFirstLocalPos = root.InverseTransformPoint(layout.GetPawnPosition(initPawns[0]));
-            var pawnSecondLocalPos = root.InverseTransformPoint(layout.GetPawnPosition(initPawns[1]));
-            pawnViews[0] = _CreateView(pawnPrefabFirst, pawnFirstLocalPos, root);
-            pawnViews[1] = _CreateView(pawnPrefabSecond, pawnSecondLocalPos, root);
+            Position[] initPawns = _setting.InitPawns;
+            PawnViewModel[] pawnViewModels =
+            {
+                new PawnViewModel(initPawns[0]),
+                new PawnViewModel(initPawns[1]),
+            };
 
-            var presenter = new BoardPresenter(
-                boardView,
-                tileViews,
-                wallViews,
-                wallJointViews,
-                pawnViews,
-                viewModels,
+            CreatePawnView(pawnPrefabFirst, pawnViewModels[0], root);
+            CreatePawnView(pawnPrefabSecond, pawnViewModels[1], root);
+
+            BoardViewModel boardViewModel = new();
+            boardView.BindViewModel(boardViewModel);
+
+            BoardCellPresenter cellPresenter = new(
+                cellViewModels,
                 _interactionStateStore,
                 _inputStateStore
             );
+            BoardPawnPresenter pawnPresenter = new(pawnViewModels);
 
+            cellPresenter.SubscribeTo(_eventBus);
+            pawnPresenter.SubscribeTo(_eventBus);
+
+            BoardPresenter presenter = new(
+                boardViewModel,
+                new List<IMatchPresenter>
+                {
+                    cellPresenter,
+                    pawnPresenter,
+                }
+            );
             presenter.SubscribeTo(_eventBus);
 
             return presenter;
         }
-    }   
+
+        private PawnView CreatePawnView(
+            PawnView prefab,
+            PawnViewModel viewModel,
+            Transform root
+        )
+        {
+            Vector3 localPos = root.InverseTransformPoint(layout.GetPawnPosition(viewModel.Position));
+            PawnView view = _CreateView(prefab, localPos, root);
+            view.BindPositionResolver(layout.GetPawnPosition);
+            view.BindViewModel(viewModel);
+            return view;
+        }
+    }
 }

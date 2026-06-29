@@ -70,7 +70,7 @@ public sealed class GameLifetimeScope : LifetimeScope
     }
 
     /// <summary>
-    /// MatchState、CommandPort、Presentationなどを生成するFactory群。
+    /// MatchState、CommandPort、MatchObjectsなどを生成するFactory群。
     /// 状態を直接持たないため Singleton でよい。
     /// </summary>
     private void RegisterFactories(IContainerBuilder builder)
@@ -80,9 +80,17 @@ public sealed class GameLifetimeScope : LifetimeScope
         builder.Register<CommandHandlerFactory>(Lifetime.Singleton);
         builder.Register<MatchCommandExecutorFactory>(Lifetime.Singleton);
         builder.Register<MatchCommandPortFactory>(Lifetime.Singleton);
-        builder.Register<MatchPresentationFactory>(Lifetime.Singleton);
+        builder.Register<MatchObjectsFactory>(Lifetime.Singleton);
         builder.Register<LegalCommandEnumerator>(Lifetime.Singleton);
-        builder.Register<CpuAgentStrategyFactory>(Lifetime.Singleton);
+        builder.Register<CpuCommandSimulator>(Lifetime.Singleton);
+        builder.Register<ICpuEvaluatorBuilder, ShortestPathCpuEvaluatorBuilder>(Lifetime.Singleton);
+        builder.Register<ICpuEvaluatorBuilder, StrategicCpuEvaluatorBuilder>(Lifetime.Singleton);
+        builder.Register<CpuEvaluatorFactory>(Lifetime.Singleton);
+        builder.Register<RandomLegalCpuAgentStrategy>(Lifetime.Singleton);
+        builder.Register<MoveOnlyCpuAgentStrategy>(Lifetime.Singleton);
+        builder.Register<GreedyCpuAgentStrategy>(Lifetime.Singleton);
+        builder.Register<AlphaBetaCpuAgentStrategy>(Lifetime.Singleton);
+        builder.Register<CpuAgentStrategyCatalog>(Lifetime.Singleton);
         builder.Register<CpuAgentFactory>(Lifetime.Singleton);
     }
 
@@ -95,6 +103,7 @@ public sealed class GameLifetimeScope : LifetimeScope
         builder.Register<GoalResolver>(Lifetime.Singleton);
         builder.Register<CheckmateResolver>(Lifetime.Singleton);
         builder.Register<SkillAvailabilityValidator>(Lifetime.Singleton);
+        builder.Register<SearchProfiler>(Lifetime.Singleton);
         builder.Register<Pathfinder>(Lifetime.Singleton);
         builder.Register<DistanceCalculator>(Lifetime.Singleton);
 

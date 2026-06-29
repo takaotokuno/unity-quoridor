@@ -19,20 +19,18 @@ MonoBehaviour:
     y: 0
   - x: 8
     y: 16
-  <PlayerControlMode>k__BackingField: 0
-  <PlayerCpuStrategyKind>k__BackingField: 0
+  <PlayerControlMode>k__BackingField: 1
+  <PlayerCpuAgentPreset>k__BackingField: {fileID: 11400000, guid: 8ff99c5f6ed7c9a4fad0b50438ffdfff, type: 2}
   <PlayerSkillIds>k__BackingField:
   - move_pawn
   - place_wall
   - remove_wall
-  - place_wall
-  - move_pawn
+  - add_sleep
   <EnemyControlMode>k__BackingField: 1
-  <EnemyCpuStrategyKind>k__BackingField: 0
+  <EnemyCpuAgentPreset>k__BackingField: {fileID: 11400000, guid: 8ff99c5f6ed7c9a4fad0b50438ffdfff, type: 2}
   <EnemySkillIds>k__BackingField:
   - move_pawn
   - place_wall
   - remove_wall
-  - move_pawn
-  - place_wall
+  - add_sleep
   <ViewPrefabCatalog>k__BackingField: {fileID: 11400000, guid: 9169491f063140f4987f267f0966e12a, type: 2}

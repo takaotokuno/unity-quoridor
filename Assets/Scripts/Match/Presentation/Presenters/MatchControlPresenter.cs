@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Quoridor
 {
     public sealed class MatchControlPresenter
@@ -14,7 +12,6 @@ namespace Quoridor
         private readonly MatchControlView _control;
 
         // index = ButtonId - 1
-        private readonly IUserInteractable[] _buttonViews;
         private readonly ButtonViewModel[] _buttonViewModels;
 
         private IMatchEventBus _eventBus;
@@ -23,14 +20,12 @@ namespace Quoridor
 
         public MatchControlPresenter(
             MatchControlView control,
-            IUserInteractable[] buttonViews,
             ButtonViewModel[] buttonViewModels,
             InteractionStateStore interactionStateStore,
             InputStateStore inputStateStore
         ) : base()
         {
             _control = control;
-            _buttonViews = buttonViews;
             _buttonViewModels = buttonViewModels;
             _interactionStateStore = interactionStateStore;
             _inputStateStore = inputStateStore;
@@ -48,16 +43,14 @@ namespace Quoridor
 
         public override void Dispose()
         {
-            if (_eventBus != null)
-            {
-                _eventBus.Unsubscribe<MatchReadiedEvent>(this);
-                _eventBus.Unsubscribe<MatchStartedEvent>(this);
-                _eventBus.Unsubscribe<MatchFinishedEvent>(this);
-                _eventBus.Unsubscribe<CheckmateEvent>(this);
-                _eventBus.Unsubscribe<InputReceivedEvent>(this);
-            }
+            if (_eventBus == null) return;
 
-            Object.Destroy(_control);
+            _eventBus.Unsubscribe<MatchReadiedEvent>(this);
+            _eventBus.Unsubscribe<MatchStartedEvent>(this);
+            _eventBus.Unsubscribe<MatchFinishedEvent>(this);
+            _eventBus.Unsubscribe<CheckmateEvent>(this);
+            _eventBus.Unsubscribe<InputReceivedEvent>(this);
+            _eventBus = null;
         }
 
         public void Notify(MatchReadiedEvent e)

@@ -5,11 +5,15 @@ namespace Quoridor
     public class Pathfinder
     {
         private readonly GoalResolver _resolver;
+        private readonly SearchProfiler _searchProfiler;
+
         public Pathfinder(
-            GoalResolver resolver
+            GoalResolver resolver,
+            SearchProfiler searchProfiler
         )
         {
-            _resolver = resolver;
+            _resolver = Guard.ThrowIfNull(resolver, nameof(resolver));
+            _searchProfiler = Guard.ThrowIfNull(searchProfiler, nameof(searchProfiler));
         }
 
         public bool CanReachGoal(BoardState board, PlayerId playerId)
@@ -42,6 +46,8 @@ namespace Quoridor
             PlayerId playerId
         )
         {
+            _searchProfiler.RecordBfsSearch();
+
             var height = grid.Height;
             var width = grid.Width;
 
@@ -117,6 +123,8 @@ namespace Quoridor
             PlayerId playerId
         )
         {
+            _searchProfiler.RecordBfsSearch();
+
             var height = grid.Height;
             var width = grid.Width;
 

@@ -15,6 +15,8 @@ namespace Quoridor
         [SerializeField] private string _label = "Turn";
         [SerializeField] private int _initialTurnCount = 1;
 
+        private TurnPanelViewModel _viewModel;
+
         protected override void OnInitialize()
         {
             if (_backgroundImage == null)
@@ -33,7 +35,44 @@ namespace Quoridor
             }
         }
 
-        public void UpdateTurnCount(int currentTurn)
+        public void BindViewModel(TurnPanelViewModel viewModel)
+        {
+            if (_viewModel != null)
+            {
+                _viewModel.Changed -= OnViewModelChanged;
+            }
+
+            _viewModel = viewModel;
+
+            if (_viewModel != null)
+            {
+                _viewModel.Changed += OnViewModelChanged;
+                OnViewModelChanged();
+            }
+        }
+
+        private void OnViewModelChanged()
+        {
+            if (_viewModel == null)
+            {
+                return;
+            }
+
+            if (_viewModel.IsVisible)
+            {
+                Show();
+            }
+            else
+            {
+                Hide();
+                return;
+            }
+
+            SetLabel(_viewModel.Label);
+            UpdateTurnCount(_viewModel.CurrentTurn);
+        }
+
+        private void UpdateTurnCount(int currentTurn)
         {
             if (_turnCountText == null)
             {
@@ -43,7 +82,7 @@ namespace Quoridor
             _turnCountText.text = currentTurn.ToString();
         }
 
-        public void SetLabel(string label)
+        private void SetLabel(string label)
         {
             _label = label;
 

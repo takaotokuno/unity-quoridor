@@ -87,7 +87,7 @@ classDiagram
 
     class PlayerSetting{
         +IsCpu : bool
-        +CpuStrategyKind : CpuAgentStrategyKind
+        +CpuOptions : CpuAgentOptions
         +SkillIds : List~SkillId~
     }
 
@@ -101,7 +101,7 @@ classDiagram
 
     class PlayerConfig{
         +IsCpu : bool
-        +CpuStrategyKind : CpuAgentStrategyKind
+        +CpuOptions : CpuAgentOptions
         +SkillIds : IReadOnlyList~SkillId~
     }
 
