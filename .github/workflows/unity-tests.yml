@@ -12,6 +12,10 @@ concurrency:
   group: unity-tests-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # game-ci/unity-test-runner@v4 currently uses Node 20. Remove this once GameCI ships a Node 24 action.
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 jobs:
   editmode-tests:
     name: EditMode tests
@@ -33,11 +37,22 @@ jobs:
             Library-${{ runner.os }}-
             Library-
 
+      - name: Verify Unity license secret
+        env:
+          HAS_UNITY_LICENSE: ${{ secrets.UNITY_LICENSE != '' }}
+          HAS_UNITY_SERIAL: ${{ secrets.UNITY_SERIAL != '' }}
+        run: |
+          if [ "$HAS_UNITY_LICENSE" != "true" ] && [ "$HAS_UNITY_SERIAL" != "true" ]; then
+            echo "::error::Set either the UNITY_LICENSE GitHub secret for a Personal license activation file, or UNITY_SERIAL with UNITY_EMAIL and UNITY_PASSWORD for a serial-based Unity license."
+            exit 1
+          fi
+
       - name: Run Unity EditMode tests
         id: unity-tests
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
