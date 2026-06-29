@@ -7,6 +7,7 @@
 - `design/` - 全体設計やアーキテクチャの説明
 - `diagrams/` - Mermaid によるクラス図・シーケンス図
 - `plans/` - 実装方針や改善計画
+- `test-checklist.md` - 手動テスト・自動テストの観点と不足テストの整理
 
 ## Diagram の分類
 
