@@ -49,15 +49,23 @@ namespace Quoridor
                 yield break;
             }
 
+            var rootSearchMoves = ConvertCommandsToSearchMoves(context.State, rootCandidates);
+            if (rootSearchMoves.Count == 0)
+            {
+                onDecided?.Invoke(PickRandomCommand(rootCandidates));
+                yield break;
+            }
+
             var totalStopwatch = Stopwatch.StartNew();
             var frameStopwatch = Stopwatch.StartNew();
             TimeSpan timeLimit = TimeSpan.FromMilliseconds(context.SearchTimeLimit.Value);
             TimeSpan frameBudget = TimeSpan.FromMilliseconds(FrameSearchBudgetMilliseconds);
-            IMatchCommand bestCommand = PickRandomCommand(rootCandidates);
+            SearchMove bestMove = rootSearchMoves[0];
             int completedDepth = 0;
             int bestScore = 0;
             bool timeout = false;
 
+            var searchState = new SearchState(context.State);
             _searchProfiler.Begin();
 
             for (int depth = 1; depth <= MaxSearchDepthSafetyLimit; depth++)
@@ -71,7 +79,8 @@ namespace Quoridor
                 SearchIterationResult result = SearchIterationResult.Timeout();
                 yield return SearchRoot(
                     context,
-                    rootCandidates,
+                    searchState,
+                    rootSearchMoves,
                     depth,
                     totalStopwatch,
                     timeLimit,
@@ -86,7 +95,7 @@ namespace Quoridor
                     break;
                 }
 
-                bestCommand = result.Command;
+                bestMove = result.Move;
                 bestScore = result.Score;
                 completedDepth = depth;
 
@@ -97,12 +106,13 @@ namespace Quoridor
             SearchProfilerSnapshot snapshot = _searchProfiler.End();
             Debug.Log($"[CPU Search] depth={completedDepth}, {snapshot}, bestScore={bestScore}, timeout={timeout}");
 
-            onDecided?.Invoke(bestCommand);
+            onDecided?.Invoke(bestMove.ToUseSkillCommand(context.Issuer));
         }
 
         private IEnumerator SearchRoot(
             CpuAgentDecisionContext context,
-            IReadOnlyList<IMatchCommand> candidates,
+            SearchState state,
+            IReadOnlyList<SearchMove> candidates,
             int depth,
             Stopwatch totalStopwatch,
             TimeSpan timeLimit,
@@ -111,11 +121,13 @@ namespace Quoridor
             Action<SearchIterationResult> onCompleted
         )
         {
-            CpuBestCommandAccumulator bestCommands = CreateBestCommandAccumulator();
+            SearchMove bestMove = default;
+            bool hasBestMove = false;
+            int bestScore = MinScoreSentinel;
             int alpha = MinScoreSentinel;
             const int beta = MaxScoreSentinel;
 
-            foreach (IMatchCommand candidate in candidates)
+            foreach (SearchMove candidate in candidates)
             {
                 _searchProfiler.RecordNode(0);
                 if (IsTimeExpired(totalStopwatch, timeLimit))
@@ -130,13 +142,10 @@ namespace Quoridor
                     frameStopwatch.Restart();
                 }
 
-                CpuCommandSimulationResult simulation = SimulateCompletedTurn(context.State, candidate);
-                if (!simulation.Succeeded)
-                    continue;
-
+                SearchUndo undo = state.Apply(candidate);
                 int score = AlphaBeta(
                     context,
-                    simulation.State,
+                    state,
                     context.PlayerId,
                     depth - 1,
                     alpha,
@@ -147,6 +156,7 @@ namespace Quoridor
                     frameBudget,
                     1
                 );
+                state.Undo(candidate, undo);
 
                 if (IsTimeExpired(totalStopwatch, timeLimit))
                 {
@@ -154,19 +164,23 @@ namespace Quoridor
                     yield break;
                 }
 
-                bestCommands.Add(candidate, score);
-                alpha = Math.Max(alpha, bestCommands.BestScore);
+                if (!hasBestMove || score > bestScore)
+                {
+                    bestMove = candidate;
+                    bestScore = score;
+                    hasBestMove = true;
+                }
+                alpha = Math.Max(alpha, bestScore);
             }
 
-            CpuBestCommandSelection selection = bestCommands.Select();
-            onCompleted?.Invoke(selection.HasCommand
-                ? SearchIterationResult.Success(selection.Command, selection.Score)
+            onCompleted?.Invoke(hasBestMove
+                ? SearchIterationResult.Success(bestMove, bestScore)
                 : SearchIterationResult.Timeout());
         }
 
         private int AlphaBeta(
             CpuAgentDecisionContext context,
-            MatchState state,
+            SearchState state,
             PlayerId perspectivePlayerId,
             int depthRemaining,
             int alpha,
@@ -180,205 +194,118 @@ namespace Quoridor
         {
             _searchProfiler.RecordNode(currentDepth);
 
-            if (ShouldEvaluateCurrentState(state, depthRemaining, totalStopwatch, timeLimit, frameStopwatch, frameBudget))
+            if (ShouldEvaluateCurrentState(depthRemaining, totalStopwatch, timeLimit, frameStopwatch, frameBudget))
                 return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
-            var candidates = EnumerateAllLegalCommands(CreateDecisionContext(
-                state,
-                context.SearchTimeLimit,
-                context.Evaluator
-            ));
+            var candidates = EnumerateSearchMoves(context, state);
             if (candidates.Count == 0)
                 return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
             return IsMaximizingTurn(state, perspectivePlayerId)
-                ? SearchMaximizingNode(
-                    context,
-                    state,
-                    perspectivePlayerId,
-                    candidates,
-                    depthRemaining,
-                    alpha,
-                    beta,
-                    totalStopwatch,
-                    timeLimit,
-                    frameStopwatch,
-                    frameBudget,
-                    currentDepth
-                )
-                : SearchMinimizingNode(
-                    context,
-                    state,
-                    perspectivePlayerId,
-                    candidates,
-                    depthRemaining,
-                    alpha,
-                    beta,
-                    totalStopwatch,
-                    timeLimit,
-                    frameStopwatch,
-                    frameBudget,
-                    currentDepth
-                );
+                ? SearchMaximizingNode(context, state, perspectivePlayerId, candidates, depthRemaining, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth)
+                : SearchMinimizingNode(context, state, perspectivePlayerId, candidates, depthRemaining, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth);
         }
 
-        private int SearchMaximizingNode(
-            CpuAgentDecisionContext context,
-            MatchState state,
-            PlayerId perspectivePlayerId,
-            IReadOnlyList<IMatchCommand> candidates,
-            int depthRemaining,
-            int alpha,
-            int beta,
-            Stopwatch totalStopwatch,
-            TimeSpan timeLimit,
-            Stopwatch frameStopwatch,
-            TimeSpan frameBudget,
-            int currentDepth
-        )
+        private int SearchMaximizingNode(CpuAgentDecisionContext context, SearchState state, PlayerId perspectivePlayerId, IReadOnlyList<SearchMove> candidates, int depthRemaining, int alpha, int beta, Stopwatch totalStopwatch, TimeSpan timeLimit, Stopwatch frameStopwatch, TimeSpan frameBudget, int currentDepth)
         {
             int value = MinScoreSentinel;
-
-            foreach (IMatchCommand candidate in candidates)
+            foreach (SearchMove candidate in candidates)
             {
-                if (IsTimeExpired(totalStopwatch, timeLimit))
-                    return value;
-
-                if (IsFrameBudgetExpired(frameStopwatch, frameBudget))
-                    return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
-
-                if (!TrySearchChild(
-                    context,
-                    state,
-                    perspectivePlayerId,
-                    candidate,
-                    depthRemaining,
-                    alpha,
-                    beta,
-                    totalStopwatch,
-                    timeLimit,
-                    frameStopwatch,
-                    frameBudget,
-                    currentDepth,
-                    out int score
-                ))
-                    continue;
-
+                if (IsTimeExpired(totalStopwatch, timeLimit)) return value;
+                if (IsFrameBudgetExpired(frameStopwatch, frameBudget)) return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
+                SearchUndo undo = state.Apply(candidate);
+                int score = AlphaBeta(context, state, perspectivePlayerId, depthRemaining - 1, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth + 1);
+                state.Undo(candidate, undo);
                 value = Math.Max(value, score);
                 alpha = Math.Max(alpha, value);
-
-                if (alpha >= beta)
-                    break;
+                if (alpha >= beta) break;
             }
-
-            return value == MinScoreSentinel
-                ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth)
-                : value;
+            return value == MinScoreSentinel ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth) : value;
         }
 
-        private int SearchMinimizingNode(
-            CpuAgentDecisionContext context,
-            MatchState state,
-            PlayerId perspectivePlayerId,
-            IReadOnlyList<IMatchCommand> candidates,
-            int depthRemaining,
-            int alpha,
-            int beta,
-            Stopwatch totalStopwatch,
-            TimeSpan timeLimit,
-            Stopwatch frameStopwatch,
-            TimeSpan frameBudget,
-            int currentDepth
-        )
+        private int SearchMinimizingNode(CpuAgentDecisionContext context, SearchState state, PlayerId perspectivePlayerId, IReadOnlyList<SearchMove> candidates, int depthRemaining, int alpha, int beta, Stopwatch totalStopwatch, TimeSpan timeLimit, Stopwatch frameStopwatch, TimeSpan frameBudget, int currentDepth)
         {
             int value = MaxScoreSentinel;
-
-            foreach (IMatchCommand candidate in candidates)
+            foreach (SearchMove candidate in candidates)
             {
-                if (IsTimeExpired(totalStopwatch, timeLimit))
-                    return value;
-
-                if (IsFrameBudgetExpired(frameStopwatch, frameBudget))
-                    return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
-
-                if (!TrySearchChild(
-                    context,
-                    state,
-                    perspectivePlayerId,
-                    candidate,
-                    depthRemaining,
-                    alpha,
-                    beta,
-                    totalStopwatch,
-                    timeLimit,
-                    frameStopwatch,
-                    frameBudget,
-                    currentDepth,
-                    out int score
-                ))
-                    continue;
-
+                if (IsTimeExpired(totalStopwatch, timeLimit)) return value;
+                if (IsFrameBudgetExpired(frameStopwatch, frameBudget)) return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
+                SearchUndo undo = state.Apply(candidate);
+                int score = AlphaBeta(context, state, perspectivePlayerId, depthRemaining - 1, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth + 1);
+                state.Undo(candidate, undo);
                 value = Math.Min(value, score);
                 beta = Math.Min(beta, value);
-
-                if (alpha >= beta)
-                    break;
+                if (alpha >= beta) break;
             }
-
-            return value == MaxScoreSentinel
-                ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth)
-                : value;
+            return value == MaxScoreSentinel ? EvaluateProfiled(context, state, perspectivePlayerId, currentDepth) : value;
         }
 
-        private bool TrySearchChild(
-            CpuAgentDecisionContext context,
-            MatchState state,
-            PlayerId perspectivePlayerId,
-            IMatchCommand candidate,
-            int depthRemaining,
-            int alpha,
-            int beta,
-            Stopwatch totalStopwatch,
-            TimeSpan timeLimit,
-            Stopwatch frameStopwatch,
-            TimeSpan frameBudget,
-            int currentDepth,
-            out int score
-        )
-        {
-            CpuCommandSimulationResult simulation = SimulateCompletedTurn(state, candidate);
-            if (!simulation.Succeeded)
-            {
-                score = 0;
-                return false;
-            }
-
-            score = AlphaBeta(
-                context,
-                simulation.State,
-                perspectivePlayerId,
-                depthRemaining - 1,
-                alpha,
-                beta,
-                totalStopwatch,
-                timeLimit,
-                frameStopwatch,
-                frameBudget,
-                currentDepth + 1
-            );
-            return true;
-        }
-
-
-        private int EvaluateProfiled(
-            CpuAgentDecisionContext context,
-            MatchState state,
-            PlayerId perspectivePlayerId,
-            int currentDepth
-        )
+        private int EvaluateProfiled(CpuAgentDecisionContext context, SearchState state, PlayerId perspectivePlayerId, int currentDepth)
         {
             _searchProfiler.RecordNode(currentDepth);
-            return Evaluate(context, state, perspectivePlayerId);
+            return Evaluate(context, state.ToMatchState(), perspectivePlayerId);
+        }
+
+        private List<SearchMove> EnumerateSearchMoves(CpuAgentDecisionContext context, SearchState state)
+        {
+            MatchState materializedState = state.ToMatchState();
+            var materializedContext = CreateDecisionContext(materializedState, context.SearchTimeLimit, context.Evaluator);
+            return ConvertCommandsToSearchMoves(materializedState, EnumerateAllLegalCommands(materializedContext));
+        }
+
+        private static List<SearchMove> ConvertCommandsToSearchMoves(MatchState state, IReadOnlyList<IMatchCommand> commands)
+        {
+            var moves = new List<SearchMove>(commands.Count);
+            foreach (IMatchCommand command in commands)
+            {
+                if (TryConvertCommandToSearchMove(state, command, out SearchMove move))
+                    moves.Add(move);
+            }
+            return moves;
+        }
+
+        private static bool TryConvertCommandToSearchMove(MatchState state, IMatchCommand command, out SearchMove move)
+        {
+            if (command is not UseSkillCommand useSkill || !useSkill.Target.HasValue)
+            {
+                move = default;
+                return false;
+            }
+            if (useSkill.SkillSlotId == BuiltInSkillSlotIds.MovePawn)
+            {
+                move = SearchMove.MovePawn(useSkill.PlayerId, useSkill.Target.Value);
+                return true;
+            }
+            if (useSkill.SkillSlotId == BuiltInSkillSlotIds.PlaceWall && TryCreateWallPattern(state.Board, useSkill.Target.Value, 3, out var pattern))
+            {
+                move = SearchMove.PlaceWall(useSkill.PlayerId, pattern.Origin, pattern.Direction, pattern.Cells);
+                return true;
+            }
+            move = default;
+            return false;
+        }
+
+        private static bool TryCreateWallPattern(BoardState board, Position origin, int length, out WallPlacementPattern pattern)
+        {
+            if (length <= 0 || !BoardGeometry.IsInside(board, origin) || !BoardGeometry.IsWallLinePosition(origin))
+            {
+                pattern = default;
+                return false;
+            }
+            var direction = origin.Y % 2 == 1 ? WallDirection.Horizontal : WallDirection.Vertical;
+            var cells = new Position[length];
+            for (var i = 0; i < length; i++)
+            {
+                var cell = new Position(origin.X + (direction == WallDirection.Horizontal ? i : 0), origin.Y + (direction == WallDirection.Vertical ? i : 0));
+                if (!BoardGeometry.IsInside(board, cell))
+                {
+                    pattern = default;
+                    return false;
+                }
+                cells[i] = cell;
+            }
+            pattern = new WallPlacementPattern(origin, direction, length, cells);
+            return true;
         }
 
         private static CpuAgentDecisionContext CreateDecisionContext(
@@ -397,7 +324,6 @@ namespace Quoridor
         }
 
         private static bool ShouldEvaluateCurrentState(
-            MatchState state,
             int depthRemaining,
             Stopwatch totalStopwatch,
             TimeSpan timeLimit,
@@ -406,12 +332,11 @@ namespace Quoridor
         )
         {
             return depthRemaining <= 0
-                || !state.IsInProgress
                 || IsTimeExpired(totalStopwatch, timeLimit)
                 || IsFrameBudgetExpired(frameStopwatch, frameBudget);
         }
 
-        private static bool IsMaximizingTurn(MatchState state, PlayerId perspectivePlayerId)
+        private static bool IsMaximizingTurn(SearchState state, PlayerId perspectivePlayerId)
         {
             return state.CurrentPlayerId == perspectivePlayerId;
         }
@@ -434,24 +359,24 @@ namespace Quoridor
         private readonly struct SearchIterationResult
         {
             public bool Completed { get; }
-            public IMatchCommand Command { get; }
+            public SearchMove Move { get; }
             public int Score { get; }
 
-            private SearchIterationResult(bool completed, IMatchCommand command, int score)
+            private SearchIterationResult(bool completed, SearchMove move, int score)
             {
                 Completed = completed;
-                Command = command;
+                Move = move;
                 Score = score;
             }
 
-            public static SearchIterationResult Success(IMatchCommand command, int score)
+            public static SearchIterationResult Success(SearchMove move, int score)
             {
-                return new SearchIterationResult(true, command, score);
+                return new SearchIterationResult(true, move, score);
             }
 
             public static SearchIterationResult Timeout()
             {
-                return new SearchIterationResult(false, null, 0);
+                return new SearchIterationResult(false, default, 0);
             }
         }
 

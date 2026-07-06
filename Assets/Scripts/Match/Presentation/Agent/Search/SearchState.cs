@@ -11,6 +11,8 @@ namespace Quoridor
     {
         private readonly int[,] _grid;
         private readonly Position[] _pawns;
+        private readonly PlayerState[] _players;
+        private readonly MatchPhase _phase;
 
         public int Width { get; }
         public int Height { get; }
@@ -40,8 +42,40 @@ namespace Quoridor
                 _pawns[i] = board.Pawns[i];
             }
 
+            _players = new PlayerState[state.Players.Count];
+            for (var i = 0; i < state.Players.Count; i++)
+            {
+                _players[i] = state.Players[i].DeepCopy();
+            }
+
+            _phase = state.Phase;
             CurrentPlayerId = state.CurrentPlayerId;
             CurrentTurn = state.CurrentTurn;
+        }
+
+
+        public MatchState ToMatchState()
+        {
+            var grid = (int[,])_grid.Clone();
+            var pawns = (Position[])_pawns.Clone();
+            var players = new PlayerState[_players.Length];
+            for (var i = 0; i < _players.Length; i++)
+            {
+                players[i] = _players[i].DeepCopy();
+            }
+
+            var turn = new TurnState();
+            while (turn.CurrentTurn < CurrentTurn)
+            {
+                turn.NextTurn();
+            }
+
+            return new MatchState(
+                new BoardState(grid, pawns),
+                players,
+                turn,
+                _phase
+            );
         }
 
         public Position GetPawn(PlayerId playerId)

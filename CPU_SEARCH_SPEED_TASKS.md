@@ -30,10 +30,10 @@ CPU の αβ 探索を、ゲーム本体のコマンド実行・イベント通�
 
 ### P1: αβ探索を `SearchState` ベースへ移行する
 
-- [ ] 探索開始時に `MatchState` から `SearchState` を 1 回だけ生成する。
-- [ ] 探索中は `CpuCommandSimulator`、`MatchCommandExecutor`、`MatchMemento`、`StateRestoredEvent` を使わない。
-- [ ] `SearchState.Apply()` / `Undo()` を αβ 探索ループへ接続する。
-- [ ] 最終的に選ばれた 1 手だけ `SearchMove.ToUseSkillCommand()` で本番コマンドへ変換する。
+- [x] 探索開始時に `MatchState` から `SearchState` を 1 回だけ生成する。
+- [x] 探索中は `CpuCommandSimulator`、`MatchCommandExecutor`、`MatchMemento`、`StateRestoredEvent` を使わない。
+- [x] `SearchState.Apply()` / `Undo()` を αβ 探索ループへ接続する。
+- [x] 最終的に選ばれた 1 手だけ `SearchMove.ToUseSkillCommand()` で本番コマンドへ変換する。
 - [ ] 既存 `IMatchCommand` ベース探索と、同一局面・同一深さの最善手または評価値が一致する回帰テストを追加する。
 
 ### P2: 探索用合法手生成を追加する
