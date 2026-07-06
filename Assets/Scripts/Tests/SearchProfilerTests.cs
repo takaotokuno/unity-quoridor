@@ -78,6 +78,68 @@ namespace Quoridor.Tests
             Assert.That(snapshot.BfsCount, Is.EqualTo(2));
         }
 
+        [Test]
+        public void SearchPathfinder_MatchesPathfinder_OnOpenBoard()
+        {
+            var pathfinder = new Pathfinder(new GoalResolver(), new SearchProfiler());
+            var searchPathfinder = new SearchPathfinder(new GoalResolver(), new SearchProfiler());
+            var board = CreateOpenBoard();
+
+            Assert.That(searchPathfinder.CanReachGoal(board, PlayerId.FirstPlayer), Is.EqualTo(pathfinder.CanReachGoal(board, PlayerId.FirstPlayer)));
+            Assert.That(searchPathfinder.CanReachGoal(board, PlayerId.SecondPlayer), Is.EqualTo(pathfinder.CanReachGoal(board, PlayerId.SecondPlayer)));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(board, PlayerId.FirstPlayer), Is.EqualTo(pathfinder.GetShortestDistanceToGoal(board, PlayerId.FirstPlayer)));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(board, PlayerId.SecondPlayer), Is.EqualTo(pathfinder.GetShortestDistanceToGoal(board, PlayerId.SecondPlayer)));
+        }
+
+        [Test]
+        public void SearchPathfinder_MatchesPathfinder_WhenWallBlocksDirectRoute()
+        {
+            var pathfinder = new Pathfinder(new GoalResolver(), new SearchProfiler());
+            var searchPathfinder = new SearchPathfinder(new GoalResolver(), new SearchProfiler());
+            var board = CreateBoardWithHorizontalWall();
+
+            Assert.That(searchPathfinder.CanReachGoal(board, PlayerId.FirstPlayer), Is.EqualTo(pathfinder.CanReachGoal(board, PlayerId.FirstPlayer)));
+            Assert.That(searchPathfinder.CanReachGoal(board, PlayerId.SecondPlayer), Is.EqualTo(pathfinder.CanReachGoal(board, PlayerId.SecondPlayer)));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(board, PlayerId.FirstPlayer), Is.EqualTo(pathfinder.GetShortestDistanceToGoal(board, PlayerId.FirstPlayer)));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(board, PlayerId.SecondPlayer), Is.EqualTo(pathfinder.GetShortestDistanceToGoal(board, PlayerId.SecondPlayer)));
+        }
+
+        [Test]
+        public void SearchPathfinder_ReusesWorkspaceAcrossDifferentBoardSizes()
+        {
+            var searchPathfinder = new SearchPathfinder(new GoalResolver(), new SearchProfiler());
+            var smallBoard = CreateOpenBoard();
+            var largeBoard = new BoardState(
+                new int[7, 7],
+                new[]
+                {
+                    new Position(2, 0),
+                    new Position(4, 6),
+                }
+            );
+
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(smallBoard, PlayerId.FirstPlayer), Is.EqualTo(2));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(largeBoard, PlayerId.SecondPlayer), Is.EqualTo(3));
+            Assert.That(searchPathfinder.GetShortestDistanceToGoal(smallBoard, PlayerId.SecondPlayer), Is.EqualTo(2));
+        }
+
+        private static BoardState CreateBoardWithHorizontalWall()
+        {
+            var grid = new int[5, 5];
+            grid[1, 1] = 1;
+            grid[1, 2] = 1;
+            grid[1, 3] = 1;
+
+            return new BoardState(
+                grid,
+                new[]
+                {
+                    new Position(2, 0),
+                    new Position(2, 4),
+                }
+            );
+        }
+
         private static BoardState CreateOpenBoard()
         {
             return new BoardState(
