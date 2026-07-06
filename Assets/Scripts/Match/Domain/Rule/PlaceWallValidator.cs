@@ -17,7 +17,7 @@ namespace Quoridor
         )
         {
             var board = state.Board;
-            if (InterferesWithExistingWall(board, pattern))
+            if (!CanOverlayCandidateWall(board, pattern))
             {
                 return false;
             }
@@ -48,26 +48,36 @@ namespace Quoridor
             return true;
         }
 
-        private static bool InterferesWithExistingWall(
+        private static bool CanOverlayCandidateWall(
             BoardState board,
             WallPlacementPattern pattern
         )
         {
+            if (board == null || board.Grid == null || pattern.Cells == null)
+            {
+                return false;
+            }
+
             foreach (var cell in pattern.Cells)
             {
+                if (!BoardGeometry.IsInside(cell, board.Grid.Width, board.Grid.Height))
+                {
+                    return false;
+                }
+
                 if (board.Grid.Get(cell.X, cell.Y) != 0)
                 {
-                    return true;
+                    return false;
                 }
             }
 
-            return false;
+            return true;
         }
 
         private sealed class WallCandidateGrid : IReadOnlyIntGrid
         {
             private readonly IReadOnlyIntGrid _baseGrid;
-            private readonly HashSet<int> _candidateWallIndices;
+            private readonly IReadOnlyList<Position> _candidateWalls;
 
             public WallCandidateGrid(
                 IReadOnlyIntGrid baseGrid,
@@ -75,12 +85,7 @@ namespace Quoridor
             )
             {
                 _baseGrid = baseGrid;
-                _candidateWallIndices = new HashSet<int>();
-
-                foreach (var wall in candidateWalls)
-                {
-                    _candidateWallIndices.Add(ToIndex(wall.X, wall.Y));
-                }
+                _candidateWalls = candidateWalls;
             }
 
             public int Width => _baseGrid.Width;
@@ -89,17 +94,15 @@ namespace Quoridor
 
             public int Get(int x, int y)
             {
-                if (_candidateWallIndices.Contains(ToIndex(x, y)))
+                foreach (var wall in _candidateWalls)
                 {
-                    return 1;
+                    if (wall.X == x && wall.Y == y)
+                    {
+                        return 1;
+                    }
                 }
 
                 return _baseGrid.Get(x, y);
-            }
-
-            private int ToIndex(int x, int y)
-            {
-                return y * Width + x;
             }
         }
     }
