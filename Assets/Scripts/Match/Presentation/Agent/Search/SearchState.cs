@@ -85,6 +85,39 @@ namespace Quoridor
             return _pawns[playerId.ToIndex()];
         }
 
+        public ulong CalculateEvaluationHash()
+        {
+            const ulong offsetBasis = 14695981039346656037UL;
+            const ulong prime = 1099511628211UL;
+            ulong hash = offsetBasis;
+
+            hash = AddHash(hash, Width, prime);
+            hash = AddHash(hash, Height, prime);
+            hash = AddHash(hash, CurrentPlayerId.Value, prime);
+
+            for (var i = 0; i < _pawns.Length; i++)
+            {
+                hash = AddHash(hash, _pawns[i].X, prime);
+                hash = AddHash(hash, _pawns[i].Y, prime);
+            }
+
+            for (var y = 0; y < Height; y++)
+            {
+                for (var x = 0; x < Width; x++)
+                {
+                    hash = AddHash(hash, _grid[y, x], prime);
+                }
+            }
+
+            return hash;
+        }
+
+        private static ulong AddHash(ulong hash, int value, ulong prime)
+        {
+            hash ^= (uint)(value + 1);
+            return hash * prime;
+        }
+
         public bool IsWall(Position position)
         {
             EnsureInside(position, nameof(position));
