@@ -19,6 +19,7 @@ namespace Quoridor
         private const int MinScoreSentinel = int.MinValue + 1;
         private const int MaxScoreSentinel = int.MaxValue;
         private readonly SearchProfiler _searchProfiler;
+        private readonly Dictionary<SearchEvaluationCacheKey, int> _evaluationCache = new();
 
         public AlphaBetaCpuAgentStrategy(
             LegalCommandEnumerator legalCommandEnumerator,
@@ -66,6 +67,7 @@ namespace Quoridor
             bool timeout = false;
 
             var searchState = new SearchState(context.State);
+            _evaluationCache.Clear();
             _searchProfiler.Begin();
 
             for (int depth = 1; depth <= MaxSearchDepthSafetyLimit; depth++)
@@ -243,7 +245,20 @@ namespace Quoridor
         private int EvaluateProfiled(CpuAgentDecisionContext context, SearchState state, PlayerId perspectivePlayerId, int currentDepth)
         {
             _searchProfiler.RecordNode(currentDepth);
-            return Evaluate(context, state.ToMatchState(), perspectivePlayerId);
+            var cacheKey = new SearchEvaluationCacheKey(
+                state.CalculateEvaluationHash(),
+                perspectivePlayerId.Value,
+                context.Evaluator.GetType()
+            );
+
+            if (_evaluationCache.TryGetValue(cacheKey, out int cachedScore))
+            {
+                return cachedScore;
+            }
+
+            int score = Evaluate(context, state.ToMatchState(), perspectivePlayerId);
+            _evaluationCache[cacheKey] = score;
+            return score;
         }
 
         private List<SearchMove> EnumerateSearchMoves(CpuAgentDecisionContext context, SearchState state)
@@ -354,6 +369,38 @@ namespace Quoridor
         private static bool IsTimeExpired(Stopwatch stopwatch, TimeSpan timeLimit)
         {
             return stopwatch.Elapsed >= timeLimit;
+        }
+
+
+        private readonly struct SearchEvaluationCacheKey : IEquatable<SearchEvaluationCacheKey>
+        {
+            private readonly ulong _stateHash;
+            private readonly int _perspectivePlayerValue;
+            private readonly Type _evaluatorType;
+
+            public SearchEvaluationCacheKey(ulong stateHash, int perspectivePlayerValue, Type evaluatorType)
+            {
+                _stateHash = stateHash;
+                _perspectivePlayerValue = perspectivePlayerValue;
+                _evaluatorType = evaluatorType;
+            }
+
+            public bool Equals(SearchEvaluationCacheKey other)
+            {
+                return _stateHash == other._stateHash
+                    && _perspectivePlayerValue == other._perspectivePlayerValue
+                    && _evaluatorType == other._evaluatorType;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is SearchEvaluationCacheKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(_stateHash, _perspectivePlayerValue, _evaluatorType);
+            }
         }
 
         private readonly struct SearchIterationResult
