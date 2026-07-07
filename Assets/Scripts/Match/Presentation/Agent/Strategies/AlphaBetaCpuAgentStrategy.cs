@@ -19,13 +19,16 @@ namespace Quoridor
         private const int MinScoreSentinel = int.MinValue + 1;
         private const int MaxScoreSentinel = int.MaxValue;
         private readonly SearchProfiler _searchProfiler;
+        private readonly SearchMoveGenerator _searchMoveGenerator;
         private readonly Dictionary<SearchEvaluationCacheKey, int> _evaluationCache = new();
+        private readonly Stack<List<SearchMove>> _moveBuffers = new();
 
         public AlphaBetaCpuAgentStrategy(
             LegalCommandEnumerator legalCommandEnumerator,
             CpuCommandSimulator commandSimulator,
             IRandomProvider randomProvider,
-            SearchProfiler searchProfiler
+            SearchProfiler searchProfiler,
+            SearchMoveGenerator searchMoveGenerator
         )
             : base(
                 legalCommandEnumerator,
@@ -34,6 +37,7 @@ namespace Quoridor
             )
         {
             _searchProfiler = Guard.ThrowIfNull(searchProfiler, nameof(searchProfiler));
+            _searchMoveGenerator = Guard.ThrowIfNull(searchMoveGenerator, nameof(searchMoveGenerator));
         }
 
         public override IEnumerator DecideCommand(
@@ -43,17 +47,13 @@ namespace Quoridor
         {
             yield return null;
 
-            var rootCandidates = EnumerateAllLegalCommands(context);
-            if (rootCandidates.Count == 0)
-            {
-                onDecided?.Invoke(null);
-                yield break;
-            }
-
-            var rootSearchMoves = ConvertCommandsToSearchMoves(context.State, rootCandidates);
+            var searchState = new SearchState(context.State);
+            List<SearchMove> rootSearchMoves = RentMoveBuffer();
+            _searchMoveGenerator.Generate(searchState, rootSearchMoves);
             if (rootSearchMoves.Count == 0)
             {
-                onDecided?.Invoke(PickRandomCommand(rootCandidates));
+                ReturnMoveBuffer(rootSearchMoves);
+                onDecided?.Invoke(null);
                 yield break;
             }
 
@@ -66,7 +66,6 @@ namespace Quoridor
             int bestScore = 0;
             bool timeout = false;
 
-            var searchState = new SearchState(context.State);
             _evaluationCache.Clear();
             _searchProfiler.Begin();
 
@@ -108,6 +107,7 @@ namespace Quoridor
             SearchProfilerSnapshot snapshot = _searchProfiler.End();
             Debug.Log($"[CPU Search] depth={completedDepth}, {snapshot}, bestScore={bestScore}, timeout={timeout}");
 
+            ReturnMoveBuffer(rootSearchMoves);
             onDecided?.Invoke(bestMove.ToUseSkillCommand(context.Issuer));
         }
 
@@ -199,13 +199,19 @@ namespace Quoridor
             if (ShouldEvaluateCurrentState(depthRemaining, totalStopwatch, timeLimit, frameStopwatch, frameBudget))
                 return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
 
-            var candidates = EnumerateSearchMoves(context, state);
+            var candidates = RentMoveBuffer();
+            _searchMoveGenerator.Generate(state, candidates);
             if (candidates.Count == 0)
+            {
+                ReturnMoveBuffer(candidates);
                 return EvaluateProfiled(context, state, perspectivePlayerId, currentDepth);
+            }
 
-            return IsMaximizingTurn(state, perspectivePlayerId)
+            int score = IsMaximizingTurn(state, perspectivePlayerId)
                 ? SearchMaximizingNode(context, state, perspectivePlayerId, candidates, depthRemaining, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth)
                 : SearchMinimizingNode(context, state, perspectivePlayerId, candidates, depthRemaining, alpha, beta, totalStopwatch, timeLimit, frameStopwatch, frameBudget, currentDepth);
+            ReturnMoveBuffer(candidates);
+            return score;
         }
 
         private int SearchMaximizingNode(CpuAgentDecisionContext context, SearchState state, PlayerId perspectivePlayerId, IReadOnlyList<SearchMove> candidates, int depthRemaining, int alpha, int beta, Stopwatch totalStopwatch, TimeSpan timeLimit, Stopwatch frameStopwatch, TimeSpan frameBudget, int currentDepth)
@@ -261,81 +267,15 @@ namespace Quoridor
             return score;
         }
 
-        private List<SearchMove> EnumerateSearchMoves(CpuAgentDecisionContext context, SearchState state)
+        private List<SearchMove> RentMoveBuffer()
         {
-            MatchState materializedState = state.ToMatchState();
-            var materializedContext = CreateDecisionContext(materializedState, context.SearchTimeLimit, context.Evaluator);
-            return ConvertCommandsToSearchMoves(materializedState, EnumerateAllLegalCommands(materializedContext));
+            return _moveBuffers.Count > 0 ? _moveBuffers.Pop() : new List<SearchMove>();
         }
 
-        private static List<SearchMove> ConvertCommandsToSearchMoves(MatchState state, IReadOnlyList<IMatchCommand> commands)
+        private void ReturnMoveBuffer(List<SearchMove> buffer)
         {
-            var moves = new List<SearchMove>(commands.Count);
-            foreach (IMatchCommand command in commands)
-            {
-                if (TryConvertCommandToSearchMove(state, command, out SearchMove move))
-                    moves.Add(move);
-            }
-            return moves;
-        }
-
-        private static bool TryConvertCommandToSearchMove(MatchState state, IMatchCommand command, out SearchMove move)
-        {
-            if (command is not UseSkillCommand useSkill || !useSkill.Target.HasValue)
-            {
-                move = default;
-                return false;
-            }
-            if (useSkill.SkillSlotId == BuiltInSkillSlotIds.MovePawn)
-            {
-                move = SearchMove.MovePawn(useSkill.PlayerId, useSkill.Target.Value);
-                return true;
-            }
-            if (useSkill.SkillSlotId == BuiltInSkillSlotIds.PlaceWall && TryCreateWallPattern(state.Board, useSkill.Target.Value, 3, out var pattern))
-            {
-                move = SearchMove.PlaceWall(useSkill.PlayerId, pattern.Origin, pattern.Direction, pattern.Cells);
-                return true;
-            }
-            move = default;
-            return false;
-        }
-
-        private static bool TryCreateWallPattern(BoardState board, Position origin, int length, out WallPlacementPattern pattern)
-        {
-            if (length <= 0 || !BoardGeometry.IsInside(board, origin) || !BoardGeometry.IsWallLinePosition(origin))
-            {
-                pattern = default;
-                return false;
-            }
-            var direction = origin.Y % 2 == 1 ? WallDirection.Horizontal : WallDirection.Vertical;
-            var cells = new Position[length];
-            for (var i = 0; i < length; i++)
-            {
-                var cell = new Position(origin.X + (direction == WallDirection.Horizontal ? i : 0), origin.Y + (direction == WallDirection.Vertical ? i : 0));
-                if (!BoardGeometry.IsInside(board, cell))
-                {
-                    pattern = default;
-                    return false;
-                }
-                cells[i] = cell;
-            }
-            pattern = new WallPlacementPattern(origin, direction, length, cells);
-            return true;
-        }
-
-        private static CpuAgentDecisionContext CreateDecisionContext(
-            MatchState state,
-            CpuSearchTimeLimit searchTimeLimit,
-            ICpuEvaluator evaluator
-        )
-        {
-            return new CpuAgentDecisionContext(
-                state,
-                state.CurrentPlayerId,
-                MatchCommandIssuers.CpuAgent,
-                searchTimeLimit,
-                evaluator
-            );
+            buffer.Clear();
+            _moveBuffers.Push(buffer);
         }
 
         private static bool ShouldEvaluateCurrentState(

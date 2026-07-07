@@ -18,6 +18,7 @@ namespace Quoridor
         public int Height { get; }
         public PlayerId CurrentPlayerId { get; private set; }
         public int CurrentTurn { get; private set; }
+        public IReadOnlyList<Position> Pawns => _pawns;
 
         public SearchState(MatchState state)
         {
@@ -83,6 +84,42 @@ namespace Quoridor
             Guard.ThrowIfNull(playerId, nameof(playerId));
 
             return _pawns[playerId.ToIndex()];
+        }
+
+        public PlayerState GetPlayer(PlayerId playerId)
+        {
+            Guard.ThrowIfNull(playerId, nameof(playerId));
+
+            return _players[playerId.ToIndex()];
+        }
+
+        public int Get(int x, int y)
+        {
+            return _grid[y, x];
+        }
+
+        public bool CanUseBuiltInSkill(PlayerId playerId, SkillSlotId skillSlotId)
+        {
+            Guard.ThrowIfNull(playerId, nameof(playerId));
+            Guard.ThrowIfNull(skillSlotId, nameof(skillSlotId));
+
+            if (_phase != MatchPhase.InProgress)
+            {
+                return false;
+            }
+
+            if (CurrentPlayerId != playerId)
+            {
+                return false;
+            }
+
+            var player = GetPlayer(playerId);
+            if (!player.TryGetSkillBySlotId(skillSlotId, out var skill))
+            {
+                return false;
+            }
+
+            return skill.CanUse();
         }
 
         public ulong CalculateEvaluationHash()
