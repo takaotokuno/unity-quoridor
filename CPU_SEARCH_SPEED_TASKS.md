@@ -38,11 +38,11 @@ CPU の αβ 探索を、ゲーム本体のコマンド実行・イベント通�
 
 ### P2: 探索用合法手生成を追加する
 
-- [ ] `SearchMoveGenerator` を追加し、呼び出し元が渡す再利用バッファへ `SearchMove` を書き込む。
-- [ ] `SearchMove` は struct のまま維持し、探索中に `IMatchCommand` / `List<IMatchCommand>` を生成しない。
-- [ ] pawn 移動候補を既存 `MovePawnValidator` と一致させるテストを追加する。
-- [ ] 壁配置候補を既存 `PlaceWallValidator` / `LegalCommandEnumerator` と一致させるテストを追加する。
-- [ ] 壁パターンは探索開始時に固定配列へ事前計算し、ノードごとの pattern provider 走査を避ける。
+- [x] `SearchMoveGenerator` を追加し、呼び出し元が渡す再利用バッファへ `SearchMove` を書き込む。
+- [x] `SearchMove` は struct のまま維持し、探索中に `IMatchCommand` / `List<IMatchCommand>` を生成しない。
+- [x] pawn 移動候補を既存 `MovePawnValidator` と一致させるテストを追加する。
+- [x] 壁配置候補を既存 `PlaceWallValidator` / `LegalCommandEnumerator` と一致させるテストを追加する。
+- [x] 壁パターンは探索開始時に固定配列へ事前計算し、ノードごとの pattern provider 走査を避ける。
 - [ ] 候補には軽量な ordering score を持たせ、αβ の枝刈り効率を上げる準備をする。
 
 ### P3: BFS の割り当てと初期化を削減する

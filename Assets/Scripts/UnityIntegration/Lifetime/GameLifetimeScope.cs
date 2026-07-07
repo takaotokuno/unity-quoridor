@@ -104,6 +104,8 @@ public sealed class GameLifetimeScope : LifetimeScope
         builder.Register<CheckmateResolver>(Lifetime.Singleton);
         builder.Register<SkillAvailabilityValidator>(Lifetime.Singleton);
         builder.Register<SearchProfiler>(Lifetime.Singleton);
+        builder.Register<SearchPathfinder>(Lifetime.Singleton);
+        builder.Register<SearchMoveGenerator>(Lifetime.Singleton);
         builder.Register<Pathfinder>(Lifetime.Singleton);
         builder.Register<DistanceCalculator>(Lifetime.Singleton);
 
