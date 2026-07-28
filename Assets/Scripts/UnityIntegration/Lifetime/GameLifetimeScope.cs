@@ -114,8 +114,6 @@ public sealed class GameLifetimeScope : LifetimeScope
         builder.Register<PlaceWallValidator>(Lifetime.Singleton);
 
         builder.Register<MatchResultResolver>(Lifetime.Singleton);
-        builder.Register<MatchEventInterpreter>(Lifetime.Singleton);
-
         builder.Register<StatusApplicator>(Lifetime.Singleton);
         builder.Register<StatusEffectApplicator>(Lifetime.Singleton);
         builder.Register<TurnAdvancer>(Lifetime.Singleton);

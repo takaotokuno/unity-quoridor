@@ -70,8 +70,8 @@ namespace Quoridor
             try
             {
                 IMatchEventBus eventBus = resolver.Resolve<IMatchEventBus>();
-                resolver.Resolve<MatchEventInterpreter>().SubscribeTo(eventBus);
-                resolver.Resolve<MatchEventLogObserver>().SubscribeTo(eventBus);
+                resolver.Resolve<MatchEventInterpreter>();
+                resolver.Resolve<MatchEventLogObserver>();
 
                 // Materialize the presentation graph in this scope. Its IDisposable
                 // lifetime is owned and released by the scoped resolver.
