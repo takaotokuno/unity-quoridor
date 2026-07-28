@@ -2,12 +2,12 @@ namespace Quoridor
 {
     public sealed class MatchFactory
     {
-        private int _sessionId;
+        private MatchSessionId _sessionId;
         private readonly VContainer.IObjectResolver _resolver;
 
         public MatchFactory(VContainer.IObjectResolver resolver)
         {
-            _sessionId = 1;
+            _sessionId = new MatchSessionId(1);
             _resolver = Guard.ThrowIfNull(resolver, nameof(resolver));
         }
 
@@ -16,7 +16,7 @@ namespace Quoridor
             Guard.ThrowIfNull(setting, nameof(setting));
 
             var scope = MatchLifetimeScope.Create(_resolver, _sessionId, setting);
-            _sessionId++;
+            _sessionId = _sessionId.Next();
             return scope;
         }
     }

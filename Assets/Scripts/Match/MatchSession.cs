@@ -6,19 +6,19 @@ namespace Quoridor
     /// </summary>
     public sealed class MatchSession : IMatchCommandPort
     {
-        public int SessionId { get; }
+        public MatchSessionId SessionId { get; }
         private readonly IMatchCommandPort _commandPort;
         private readonly IMatchEventBus _eventBus;
         private readonly MatchLifetimeState _lifetime;
 
         public MatchSession(
-            int sessionId,
+            MatchSessionId sessionId,
             IMatchCommandPort commandPort,
             IMatchEventBus eventBus,
             MatchLifetimeState lifetime
         )
         {
-            SessionId = sessionId;
+            SessionId = Guard.ThrowIfNull(sessionId, nameof(sessionId));
             _commandPort = Guard.ThrowIfNull(commandPort, nameof(commandPort));
             _eventBus = Guard.ThrowIfNull(eventBus, nameof(eventBus));
             _lifetime = Guard.ThrowIfNull(lifetime, nameof(lifetime));
