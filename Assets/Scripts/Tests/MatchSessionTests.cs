@@ -17,7 +17,8 @@ namespace Quoridor.Tests
                 {
                     typeof(MatchSessionId),
                     typeof(IMatchCommandPort),
-                    typeof(IMatchEventBus)
+                    typeof(IMatchEventBus),
+                    typeof(MatchLifetimeState)
                 })
             );
         }
@@ -26,14 +27,35 @@ namespace Quoridor.Tests
         public void DispatchCommand_DelegatesToCommandPort()
         {
             var commandPort = new RecordingCommandPort();
-            var sessionId = new MatchSessionId(42);
-            var session = new MatchSession(sessionId, commandPort, new StubEventBus());
+            var session = new MatchSession(
+                42,
+                commandPort,
+                new StubEventBus(),
+                new MatchLifetimeState()
+            );
 
             IMatchResponse response = session.DispatchCommand(null);
 
             Assert.That(session.SessionId, Is.EqualTo(sessionId));
             Assert.That(response, Is.SameAs(commandPort.Response));
             Assert.That(commandPort.DispatchCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Operations_ThrowAfterLifetimeIsDisposed()
+        {
+            var commandPort = new RecordingCommandPort();
+            var eventBus = new StubEventBus();
+            var lifetime = new MatchLifetimeState();
+            var session = new MatchSession(42, commandPort, eventBus, lifetime);
+            var observer = new StubObserver();
+
+            lifetime.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => session.DispatchCommand(null));
+            Assert.Throws<ObjectDisposedException>(() => session.Subscribe(observer));
+            Assert.Throws<ObjectDisposedException>(() => session.Unsubscribe(observer));
+            Assert.That(commandPort.DispatchCount, Is.Zero);
         }
 
         private sealed class RecordingCommandPort : IMatchCommandPort
@@ -59,6 +81,11 @@ namespace Quoridor.Tests
         {
             public bool IsSuccess => true;
             public string Message => string.Empty;
+        }
+
+        private sealed class StubObserver : IMatchObserver<MatchReadiedEvent>
+        {
+            public void Notify(MatchReadiedEvent e) { }
         }
     }
 }
