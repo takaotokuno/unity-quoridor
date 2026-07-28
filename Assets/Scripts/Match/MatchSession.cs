@@ -1,26 +1,24 @@
-using System;
-
 namespace Quoridor
 {
-    public sealed class MatchSession : IMatchCommandPort, IDisposable
+    /// <summary>
+    /// Facade for interacting with a match. The owning MatchLifetimeScope controls
+    /// the lifetime of the objects behind this facade.
+    /// </summary>
+    public sealed class MatchSession : IMatchCommandPort
     {
         public int SessionId { get; }
-        private bool _disposed;
-        private IMatchCommandPort _commandPort;
-        private IMatchEventBus _eventBus;
-        private IMatchObjects _matchObjects;
+        private readonly IMatchCommandPort _commandPort;
+        private readonly IMatchEventBus _eventBus;
 
         public MatchSession(
             int sessionId,
             IMatchCommandPort commandPort,
-            IMatchEventBus eventBus,
-            IMatchObjects matchObjects
+            IMatchEventBus eventBus
         )
         {
             SessionId = sessionId;
-            _commandPort = commandPort;
-            _eventBus = eventBus;
-            _matchObjects = matchObjects;
+            _commandPort = Guard.ThrowIfNull(commandPort, nameof(commandPort));
+            _eventBus = Guard.ThrowIfNull(eventBus, nameof(eventBus));
         }
 
         public IMatchResponse DispatchCommand(IMatchCommand command)
@@ -38,16 +36,5 @@ namespace Quoridor
             _eventBus.Unsubscribe(observer);
         }
 
-        public void Dispose()
-        {
-            if (_disposed) return;
-
-            _matchObjects?.Dispose();
-            _matchObjects = null;
-            _eventBus = null;
-            _commandPort = null;
-
-            _disposed = true;
-        }
     }
 }
