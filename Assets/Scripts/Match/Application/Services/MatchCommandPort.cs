@@ -4,30 +4,35 @@ using System.Threading;
 
 namespace Quoridor
 {
-    public sealed class MatchCommandPort : IMatchCommandPort
+    public sealed class MatchCommandPort : IMatchCommandPort, IDisposable
     {
         private readonly Queue<IMatchCommand> _queue = new();
         private readonly object _lock = new();
         private readonly MatchCommandExecutor _executor;
         private readonly SynchronizationContext _mainThreadContext;
         private readonly IGameLogger _logger;
+        private readonly MatchLifetimeState _lifetime;
 
         private bool _isProcessing;
         private bool _isProcessPosted;
+        private bool _disposed;
 
         public MatchCommandPort(
             MatchCommandExecutor executor,
             SynchronizationContext mainThreadContext,
-            IGameLogger logger
+            IGameLogger logger,
+            MatchLifetimeState lifetime
         )
         {
             _executor = Guard.ThrowIfNull(executor, nameof(executor));
             _mainThreadContext = Guard.ThrowIfNull(mainThreadContext, nameof(mainThreadContext));
             _logger = logger;
+            _lifetime = Guard.ThrowIfNull(lifetime, nameof(lifetime));
         }
 
         public IMatchResponse DispatchCommand(IMatchCommand command)
         {
+            _lifetime.ThrowIfDisposed();
             LogCommand(command);
 
             if (command == null)
@@ -37,6 +42,8 @@ namespace Quoridor
 
             lock (_lock)
             {
+                _lifetime.ThrowIfDisposed();
+                ThrowIfDisposed();
                 _queue.Enqueue(command);
 
                 if (!_isProcessing && !_isProcessPosted)
@@ -55,7 +62,7 @@ namespace Quoridor
             {
                 _isProcessPosted = false;
 
-                if (_isProcessing)
+                if (_disposed || _lifetime.IsDisposed || _isProcessing)
                 {
                     return;
                 }
@@ -71,7 +78,7 @@ namespace Quoridor
 
                     lock (_lock)
                     {
-                        if (_queue.Count == 0)
+                        if (_disposed || _lifetime.IsDisposed || _queue.Count == 0)
                         {
                             return;
                         }
@@ -88,12 +95,33 @@ namespace Quoridor
                 {
                     _isProcessing = false;
 
-                    if (_queue.Count > 0 && !_isProcessPosted)
+                    if (!_disposed && !_lifetime.IsDisposed &&
+                        _queue.Count > 0 && !_isProcessPosted)
                     {
                         _isProcessPosted = true;
                         _mainThreadContext.Post(_ => ProcessQueue(), null);
                     }
                 }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                if (_disposed) return;
+
+                _disposed = true;
+                _queue.Clear();
+                _isProcessPosted = false;
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(MatchCommandPort));
             }
         }
 

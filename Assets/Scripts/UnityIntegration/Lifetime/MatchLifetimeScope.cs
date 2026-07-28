@@ -9,17 +9,20 @@ namespace Quoridor
     public sealed class MatchLifetimeScope : IDisposable
     {
         private readonly IScopedObjectResolver _resolver;
+        private readonly MatchLifetimeState _lifetime;
         private bool _disposed;
 
         public MatchSession Session { get; }
 
         private MatchLifetimeScope(
             IScopedObjectResolver resolver,
-            MatchSession session
+            MatchSession session,
+            MatchLifetimeState lifetime
         )
         {
             _resolver = Guard.ThrowIfNull(resolver, nameof(resolver));
             Session = Guard.ThrowIfNull(session, nameof(session));
+            _lifetime = Guard.ThrowIfNull(lifetime, nameof(lifetime));
         }
 
         public static MatchLifetimeScope Create(
@@ -39,6 +42,7 @@ namespace Quoridor
                 builder.RegisterInstance(stateConfig);
                 builder.RegisterInstance(objectsConfig);
                 builder.RegisterInstance(sessionId);
+                builder.Register<MatchLifetimeState>(Lifetime.Scoped);
 
                 builder.Register<MatchState>(container =>
                     container.Resolve<MatchStateFactory>().Create(
@@ -84,8 +88,9 @@ namespace Quoridor
                 // lifetime is owned and released by the scoped resolver.
                 resolver.Resolve<IMatchObjects>();
                 MatchSession session = resolver.Resolve<MatchSession>();
+                MatchLifetimeState lifetime = resolver.Resolve<MatchLifetimeState>();
                 eventBus.DispatchEvent(new MatchReadiedEvent());
-                return new MatchLifetimeScope(resolver, session);
+                return new MatchLifetimeScope(resolver, session, lifetime);
             }
             catch
             {
@@ -98,8 +103,9 @@ namespace Quoridor
         {
             if (_disposed) return;
 
-            _resolver.Dispose();
             _disposed = true;
+            _lifetime.Dispose();
+            _resolver.Dispose();
         }
     }
 }
