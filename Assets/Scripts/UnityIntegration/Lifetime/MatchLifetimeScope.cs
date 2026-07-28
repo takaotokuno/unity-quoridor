@@ -38,7 +38,7 @@ namespace Quoridor
             {
                 builder.RegisterInstance(stateConfig);
                 builder.RegisterInstance(objectsConfig);
-                builder.RegisterInstance(new MatchSessionId(sessionId));
+                builder.RegisterInstance(sessionId);
 
                 builder.Register<MatchState>(container =>
                     container.Resolve<MatchStateFactory>().Create(
@@ -64,13 +64,7 @@ namespace Quoridor
                         container.Resolve<IMatchCommandPort>()
                     ), Lifetime.Scoped);
 
-                builder.Register<MatchSession>(container =>
-                    new MatchSession(
-                        container.Resolve<MatchSessionId>().Value,
-                        container.Resolve<IMatchCommandPort>(),
-                        container.Resolve<IMatchEventBus>(),
-                        container.Resolve<IMatchObjects>()
-                    ), Lifetime.Scoped);
+                builder.Register<MatchSession>(Lifetime.Scoped);
             });
 
             try
@@ -79,6 +73,9 @@ namespace Quoridor
                 resolver.Resolve<MatchEventInterpreter>().SubscribeTo(eventBus);
                 resolver.Resolve<MatchEventLogObserver>().SubscribeTo(eventBus);
 
+                // Materialize the presentation graph in this scope. Its IDisposable
+                // lifetime is owned and released by the scoped resolver.
+                resolver.Resolve<IMatchObjects>();
                 MatchSession session = resolver.Resolve<MatchSession>();
                 eventBus.DispatchEvent(new MatchReadiedEvent());
                 return new MatchLifetimeScope(resolver, session);
@@ -96,16 +93,6 @@ namespace Quoridor
 
             _resolver.Dispose();
             _disposed = true;
-        }
-
-        private sealed class MatchSessionId
-        {
-            public int Value { get; }
-
-            public MatchSessionId(int value)
-            {
-                Value = value;
-            }
         }
     }
 }

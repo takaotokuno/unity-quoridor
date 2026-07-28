@@ -1,21 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Quoridor
 {
     public sealed class GameDirector
     {
-        private MatchFactory _matchFactory;
-        private List<MatchSession> _matchList;
-        private List<MatchLifetimeScope> _matchScopes;
-        public IReadOnlyList<MatchSession> MatchList => _matchList;
-        public bool HasMatch => MatchList.Count > 0;
-        public MatchSession FirstMatch => HasMatch ? _matchList[0] : null;
+        private readonly MatchFactory _matchFactory;
+        private readonly List<MatchLifetimeScope> _matchScopes;
+        public IReadOnlyList<MatchSession> MatchList =>
+            _matchScopes.Select(scope => scope.Session).ToArray();
+        public bool HasMatch => _matchScopes.Count > 0;
+        public MatchSession FirstMatch => HasMatch ? _matchScopes[0].Session : null;
 
         public GameDirector(MatchFactory matchFactory)
         {
             _matchFactory = matchFactory;
-            _matchList = new();
             _matchScopes = new();
         }
 
@@ -57,7 +57,6 @@ namespace Quoridor
             MatchLifetimeScope scope = _matchFactory.Create(setting);
             MatchSession match = scope.Session;
             _matchScopes.Add(scope);
-            _matchList.Add(match);
             return match;
         }
 
@@ -74,7 +73,6 @@ namespace Quoridor
                 scope.Dispose();
             }
             _matchScopes.Clear();
-            _matchList.Clear();
         }
     }
 }
