@@ -7,6 +7,7 @@ namespace Quoridor
     {
         private MatchFactory _matchFactory;
         private List<MatchSession> _matchList;
+        private List<MatchLifetimeScope> _matchScopes;
         public IReadOnlyList<MatchSession> MatchList => _matchList;
         public bool HasMatch => MatchList.Count > 0;
         public MatchSession FirstMatch => HasMatch ? _matchList[0] : null;
@@ -15,6 +16,7 @@ namespace Quoridor
         {
             _matchFactory = matchFactory;
             _matchList = new();
+            _matchScopes = new();
         }
 
         public IGameResponse DispatchRequest(IGameRequest request)
@@ -52,7 +54,9 @@ namespace Quoridor
 
         private MatchSession _CreateMatch(MatchSetting setting)
         {
-            MatchSession match = _matchFactory.Create(setting);
+            MatchLifetimeScope scope = _matchFactory.Create(setting);
+            MatchSession match = scope.Session;
+            _matchScopes.Add(scope);
             _matchList.Add(match);
             return match;
         }
@@ -65,10 +69,11 @@ namespace Quoridor
 
         private void _Reset()
         {
-            foreach(var match in _matchList)
+            foreach(var scope in _matchScopes)
             {
-                match.Dispose();   
+                scope.Dispose();
             }
+            _matchScopes.Clear();
             _matchList.Clear();
         }
     }
