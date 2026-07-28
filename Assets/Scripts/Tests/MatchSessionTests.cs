@@ -15,7 +15,7 @@ namespace Quoridor.Tests
                     .Select(parameter => parameter.ParameterType),
                 Is.EquivalentTo(new[]
                 {
-                    typeof(int),
+                    typeof(MatchSessionId),
                     typeof(IMatchCommandPort),
                     typeof(IMatchEventBus)
                 })
@@ -26,11 +26,12 @@ namespace Quoridor.Tests
         public void DispatchCommand_DelegatesToCommandPort()
         {
             var commandPort = new RecordingCommandPort();
-            var session = new MatchSession(42, commandPort, new StubEventBus());
+            var sessionId = new MatchSessionId(42);
+            var session = new MatchSession(sessionId, commandPort, new StubEventBus());
 
             IMatchResponse response = session.DispatchCommand(null);
 
-            Assert.That(session.SessionId, Is.EqualTo(42));
+            Assert.That(session.SessionId, Is.EqualTo(sessionId));
             Assert.That(response, Is.SameAs(commandPort.Response));
             Assert.That(commandPort.DispatchCount, Is.EqualTo(1));
         }

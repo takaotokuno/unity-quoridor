@@ -5,7 +5,7 @@
 ```mermaid
 classDiagram
     class MatchSession{
-        +SessionId : int
+        +SessionId : MatchSessionId
         -_commandPort : IMatchCommandPort
         -_eventBus : IMatchEventBus
         -_presentation : IMatchPresentation

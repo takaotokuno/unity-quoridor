@@ -24,11 +24,12 @@ namespace Quoridor
 
         public static MatchLifetimeScope Create(
             IObjectResolver parentResolver,
-            int sessionId,
+            MatchSessionId sessionId,
             MatchSetting setting
         )
         {
             Guard.ThrowIfNull(parentResolver, nameof(parentResolver));
+            Guard.ThrowIfNull(sessionId, nameof(sessionId));
             Guard.ThrowIfNull(setting, nameof(setting));
 
             MatchStateConfig stateConfig = MatchConfigMapper.ToStateConfig(setting);
