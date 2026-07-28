@@ -6,17 +6,17 @@ namespace Quoridor
     /// </summary>
     public sealed class MatchSession : IMatchCommandPort
     {
-        public int SessionId { get; }
+        public MatchSessionId SessionId { get; }
         private readonly IMatchCommandPort _commandPort;
         private readonly IMatchEventBus _eventBus;
 
         public MatchSession(
-            int sessionId,
+            MatchSessionId sessionId,
             IMatchCommandPort commandPort,
             IMatchEventBus eventBus
         )
         {
-            SessionId = sessionId;
+            SessionId = Guard.ThrowIfNull(sessionId, nameof(sessionId));
             _commandPort = Guard.ThrowIfNull(commandPort, nameof(commandPort));
             _eventBus = Guard.ThrowIfNull(eventBus, nameof(eventBus));
         }

@@ -5,7 +5,7 @@
 ```mermaid
 classDiagram
     class MatchFactory{
-        -_sessionId : int
+        -_sessionId : MatchSessionId
         +Create(setting) MatchLifetimeScope
     }
 
