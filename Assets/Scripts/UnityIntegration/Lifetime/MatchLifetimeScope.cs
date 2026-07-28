@@ -49,11 +49,18 @@ namespace Quoridor
                 builder.Register<MatchEventInterpreter>(Lifetime.Scoped);
                 builder.Register<MatchEventLogObserver>(Lifetime.Scoped);
 
-                builder.Register<IMatchCommandPort>(container =>
-                    container.Resolve<MatchCommandPortFactory>().Create(
-                        container.Resolve<MatchState>(),
-                        container.Resolve<IMatchEventBus>()
+                builder.Register<CommandVisitor>(container =>
+                    container.Resolve<CommandHandlerFactory>().Create(
+                        container.Resolve<MatchState>()
                     ), Lifetime.Scoped);
+
+                builder.Register<MatchHistory>(container =>
+                    new MatchHistory(container.Resolve<MatchState>().Capture()),
+                    Lifetime.Scoped
+                );
+
+                builder.Register<MatchCommandExecutor>(Lifetime.Scoped);
+                builder.Register<IMatchCommandPort, MatchCommandPort>(Lifetime.Scoped);
 
                 builder.Register<IMatchObjects>(container =>
                     container.Resolve<MatchObjectsFactory>().Create(

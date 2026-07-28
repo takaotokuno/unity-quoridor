@@ -76,7 +76,7 @@
 | Event Service | `MatchEventBus`, `MatchEventInterpreter`, `MatchEventLogObserver` | イベント配信、音・演出・ログへの橋渡し |
 | Input Service | `MatchInputPort`, `MatchInputStateUpdater`, `MatchInputReleaseValidator`, `MatchInputCommandDispatcher`, `SkillSelectionController` | View からの入力 Intent を検証し Command または選択状態更新に変換 |
 | Turn / Status | `TurnAdvancer`, `StatusApplicator`, `StatusEffectApplicator`, `DistanceCalculator` | ターン進行、状態異常の付与・適用、ゴール距離計算 |
-| Factory | `MatchFactory`, `MatchStateFactory`, `MatchPresentationFactory`, `MatchCommandPortFactory`, `CpuAgentFactory` | 対局セッション生成に必要な依存を構築 |
+| Factory / Composition Root | `MatchFactory`, `MatchStateFactory`, `MatchObjectsFactory`, `CpuAgentFactory`, `MatchLifetimeScope` | 複雑な生成処理は Factory に残し、対局単位の依存とライフタイムは Match Scope で構築・管理 |
 
 ### 2.3 Presentation
 
@@ -111,12 +111,12 @@
 ```text
 GameDirector.DispatchRequest(NewSessionRequest)
   -> MatchFactory.Create(MatchSetting)
-  -> MatchConfigMapper.ToStateConfig / ToPresentationConfig
+  -> MatchConfigMapper.ToStateConfig / ToObjectsConfig
   -> MatchStateFactory.Create
   -> MatchEventBus / MatchEventInterpreter / MatchEventLogObserver
-  -> MatchCommandPortFactory.Create
+  -> Match Scope から MatchCommandPort / MatchCommandExecutor をコンストラクタ注入で解決
   -> CpuAgentFactory.Create
-  -> MatchPresentationFactory.Create
+  -> MatchObjectsFactory.Create
   -> MatchSession
 ```
 

@@ -1,16 +1,18 @@
-# Match Factory / Composition Root
+# Match Scope / Composition Root
 
-## Factory クラス図
+## Composition Root クラス図
 
 ```mermaid
 classDiagram
     class MatchFactory{
         -_sessionId : int
-        -_stateFactory : MatchStateFactory
-        -_commandPortFactory : MatchCommandPortFactory
-        -_cpuAgentFactory : CpuAgentFactory
-        -_presentationFactory : MatchPresentationFactory
-        +Create(setting) MatchSession
+        +Create(setting) MatchLifetimeScope
+    }
+
+    class MatchLifetimeScope{
+        +Session : MatchSession
+        +Create(parentResolver, sessionId, setting) MatchLifetimeScope
+        +Dispose()
     }
 
     class MatchStateFactory{
@@ -18,23 +20,25 @@ classDiagram
         +Create(config) MatchState
     }
 
-    class MatchCommandPortFactory{
-        -_commandHandlerFactory : CommandHandlerFactory
-        -_executorFactory : MatchCommandExecutorFactory
+    class MatchCommandPort{
+        -_executor : MatchCommandExecutor
         -_mainThreadContext : SynchronizationContext
-        +Create(state, eventBus) IMatchCommandPort
+        +DispatchCommand(command) IMatchResponse
     }
 
     class CommandHandlerFactory{
         +Create(state) CommandVisitor
     }
 
-    class MatchCommandExecutorFactory{
-        +Create(state, eventBus, visitor) MatchCommandExecutor
+    class MatchCommandExecutor{
+        -_state : MatchState
+        -_history : MatchHistory
+        -_visitor : CommandVisitor
+        +Execute(command)
     }
 
-    class MatchPresentationFactory{
-        +Create(config, state, eventBus, commandPort) MatchPresentation
+    class MatchObjectsFactory{
+        +Create(config, state, eventBus, commandPort) MatchObjects
     }
 
     class PresenterFactory{
@@ -46,29 +50,27 @@ classDiagram
     }
 
     class CpuAgentFactory{
-        +Create(config, state, commandPort, eventBus) IReadOnlyList~MlAgentsCpuAgent~
+        +Create(config, state, commandPort, eventBus) IReadOnlyList~CpuAgent~
     }
 
     class MatchConfigMapper{
         <<static>>
         +ToStateConfig(setting) MatchStateConfig
-        +ToPresentationConfig(setting) MatchPresentationConfig
+        +ToObjectsConfig(setting) MatchObjectsConfig
     }
 
     MatchFactory --> MatchConfigMapper
-    MatchFactory --> MatchStateFactory
-    MatchFactory --> MatchCommandPortFactory
-    MatchFactory --> CpuAgentFactory
-    MatchFactory --> MatchPresentationFactory
-    MatchFactory --> MatchEventBus
-    MatchFactory --> MatchEventInterpreter
-    MatchFactory --> MatchEventLogObserver
-    MatchCommandPortFactory --> CommandHandlerFactory
-    MatchCommandPortFactory --> MatchCommandExecutorFactory
+    MatchFactory --> MatchLifetimeScope
+    MatchLifetimeScope --> MatchStateFactory
+    MatchLifetimeScope --> CommandHandlerFactory
+    MatchLifetimeScope --> MatchHistory
+    MatchLifetimeScope --> MatchCommandExecutor
+    MatchLifetimeScope --> MatchCommandPort
     CommandHandlerFactory --> CommandVisitor
-    MatchCommandExecutorFactory --> MatchHistory
-    MatchPresentationFactory --> PresenterFactory
-    CpuAgentFactory --> MlAgentsCpuAgent
+    MatchCommandPort --> MatchCommandExecutor
+    MatchCommandExecutor --> MatchHistory
+    MatchObjectsFactory --> PresenterFactory
+    CpuAgentFactory --> CpuAgent
 ```
 
 ## 設定クラス図
@@ -105,7 +107,7 @@ classDiagram
         +SkillIds : IReadOnlyList~SkillId~
     }
 
-    class MatchPresentationConfig{
+    class MatchObjectsConfig{
         +BoardSize : int
         +InitPawns : Position[]
         +SkillIdsFirst : IReadOnlyList~SkillId~
@@ -141,7 +143,7 @@ classDiagram
     MatchSetting "1" *-- "2" PlayerSetting
     MatchStateConfig "1" *-- "2" PlayerConfig
     MatchSetting --> MatchStateConfig : mapped
-    MatchSetting --> MatchPresentationConfig : mapped
+    MatchSetting --> MatchObjectsConfig : mapped
     MatchSetting --> MatchViewPrefabCatalog
     MatchSetting --> ObjectLayoutView
 ```
@@ -151,19 +153,22 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant Factory as MatchFactory
+    participant Scope as MatchLifetimeScope
     participant StateFactory as MatchStateFactory
-    participant CommandFactory as MatchCommandPortFactory
+    participant Container as Scoped Container
     participant CpuFactory as CpuAgentFactory
-    participant PresentationFactory as MatchPresentationFactory
+    participant PresentationFactory as MatchObjectsFactory
 
-    Factory->>Factory: MatchConfigMapper.ToStateConfig/ToPresentationConfig
-    Factory->>StateFactory: Create(stateConfig)
-    StateFactory-->>Factory: MatchState
-    Factory->>Factory: new MatchEventBus + observers
-    Factory->>CommandFactory: Create(state, eventBus)
-    CommandFactory-->>Factory: IMatchCommandPort
-    Factory->>CpuFactory: Create(stateConfig, state, commandPort, eventBus)
-    Factory->>PresentationFactory: Create(presentationConfig, state, eventBus, commandPort)
-    PresentationFactory-->>Factory: MatchPresentation
-    Factory-->>Factory: new MatchSession(sessionId, commandPort, eventBus, presentation)
+    Factory->>Scope: Create(parentResolver, sessionId, setting)
+    Scope->>Scope: MatchConfigMapper.ToStateConfig/ToObjectsConfig
+    Scope->>Container: Match 単位の依存を Scoped 登録
+    Container->>StateFactory: Create(stateConfig)
+    StateFactory-->>Container: MatchState
+    Container->>Container: CommandVisitor / MatchHistory を生成
+    Container->>Container: MatchCommandExecutor をコンストラクタ注入
+    Container->>Container: IMatchCommandPort をコンストラクタ注入
+    Container->>CpuFactory: Create(stateConfig, state, commandPort, eventBus)
+    Container->>PresentationFactory: Create(objectsConfig, state, eventBus, commandPort)
+    Container-->>Scope: MatchSession
+    Scope-->>Factory: MatchLifetimeScope
 ```

@@ -78,8 +78,6 @@ public sealed class GameLifetimeScope : LifetimeScope
         builder.Register<MatchFactory>(Lifetime.Singleton);
         builder.Register<MatchStateFactory>(Lifetime.Singleton);
         builder.Register<CommandHandlerFactory>(Lifetime.Singleton);
-        builder.Register<MatchCommandExecutorFactory>(Lifetime.Singleton);
-        builder.Register<MatchCommandPortFactory>(Lifetime.Singleton);
         builder.Register<MatchObjectsFactory>(Lifetime.Singleton);
         builder.Register<LegalCommandEnumerator>(Lifetime.Singleton);
         builder.Register<CpuCommandSimulator>(Lifetime.Singleton);
