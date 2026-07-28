@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace Quoridor
@@ -19,19 +20,22 @@ namespace Quoridor
           IMatchObserver<CommandRejectedEvent>,
           IMatchObserver<InputRejectedEvent>,
           IMatchObserver<WallPlacedEvent>,
-          IEventSubscriber
+          IEventSubscriber,
+          IDisposable
     {
         private IMatchEventBus _eventBus;
         private readonly IGameLogger _logger;
         private readonly MatchState _state;
 
         public MatchEventLogObserver(
+            IMatchEventBus eventBus,
             IGameLogger logger,
             MatchState state
         )
         {
             _logger = logger;
             _state = state;
+            SubscribeTo(eventBus);
         }
 
         public void Notify(CheckmateEvent e)
@@ -117,6 +121,9 @@ namespace Quoridor
 
         public void SubscribeTo(IMatchEventBus eventBus)
         {
+            Guard.ThrowIfNull(eventBus, nameof(eventBus));
+            if (_eventBus != null) return;
+
             _eventBus = eventBus;
 
             _eventBus.Subscribe<CheckmateEvent>(this);
@@ -135,6 +142,29 @@ namespace Quoridor
             _eventBus.Subscribe<CommandRejectedEvent>(this);
             _eventBus.Subscribe<InputRejectedEvent>(this);
             _eventBus.Subscribe<WallPlacedEvent>(this);
+        }
+
+        public void Dispose()
+        {
+            if (_eventBus == null) return;
+
+            _eventBus.Unsubscribe<CheckmateEvent>(this);
+            _eventBus.Unsubscribe<MatchFinishedEvent>(this);
+            _eventBus.Unsubscribe<MatchReadiedEvent>(this);
+            _eventBus.Unsubscribe<MatchStartedEvent>(this);
+            _eventBus.Unsubscribe<StateRestoredEvent>(this);
+            _eventBus.Unsubscribe<TurnEndedEvent>(this);
+            _eventBus.Unsubscribe<TurnSkippedEvent>(this);
+            _eventBus.Unsubscribe<TurnStartedEvent>(this);
+            _eventBus.Unsubscribe<SkillSelectionChangedEvent>(this);
+            _eventBus.Unsubscribe<SkillUsedEvent>(this);
+            _eventBus.Unsubscribe<StatusAddedEvent>(this);
+            _eventBus.Unsubscribe<StatusAppliedEvent>(this);
+            _eventBus.Unsubscribe<StatusRemovedEvent>(this);
+            _eventBus.Unsubscribe<CommandRejectedEvent>(this);
+            _eventBus.Unsubscribe<InputRejectedEvent>(this);
+            _eventBus.Unsubscribe<WallPlacedEvent>(this);
+            _eventBus = null;
         }
 
         private void LogEvent<T>(T e)

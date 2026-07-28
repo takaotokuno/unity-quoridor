@@ -1,10 +1,13 @@
+using System;
+
 namespace Quoridor
 {
     public sealed class MatchEventInterpreter 
         : IMatchObserver<PawnMovedEvent>,
           IMatchObserver<WallPlacedEvent>, 
           IMatchObserver<MatchFinishedEvent>,
-          IEventSubscriber
+          IEventSubscriber,
+          IDisposable
     {
         private IMatchEventBus _eventBus;
         private readonly ISoundService _sound;
@@ -12,6 +15,7 @@ namespace Quoridor
         private readonly IBackgroundEffectService _background;
 
         public MatchEventInterpreter(
+            IMatchEventBus eventBus,
             ISoundService sound,
             ITimeEffectService timeEffect,
             IBackgroundEffectService background
@@ -20,6 +24,7 @@ namespace Quoridor
             _sound = sound;
             _timeEffect = timeEffect;
             _background = background;
+            SubscribeTo(eventBus);
         }
 
         public void Notify(PawnMovedEvent e)
@@ -40,10 +45,23 @@ namespace Quoridor
 
         public void SubscribeTo(IMatchEventBus eventBus)
         {
+            Guard.ThrowIfNull(eventBus, nameof(eventBus));
+            if (_eventBus != null) return;
+
             _eventBus = eventBus;
             _eventBus.Subscribe<PawnMovedEvent>(this);
             _eventBus.Subscribe<WallPlacedEvent>(this);
             _eventBus.Subscribe<MatchFinishedEvent>(this);
+        }
+
+        public void Dispose()
+        {
+            if (_eventBus == null) return;
+
+            _eventBus.Unsubscribe<PawnMovedEvent>(this);
+            _eventBus.Unsubscribe<WallPlacedEvent>(this);
+            _eventBus.Unsubscribe<MatchFinishedEvent>(this);
+            _eventBus = null;
         }
     }
 }
